@@ -55,7 +55,7 @@ int main(int argc, char ** argv){
 		std::cerr << "not found message option" << endl;
 		return -3;
 	}
-
+	
 	if (cpp_out){
 		std::cout << "generating cpp headers to :" << cpp_out << endl;
 	}
