@@ -115,9 +115,17 @@ pbdcex_generate_mysql_create(pbdcex_t * pdc, const char * msg){
 		return -2;
 	}
 	string sql;
-	if (pdc->sql_cvt->CreateTables(msg, sql)){
-		GLOG_ERR("get create tables error !");
-		return -3;
+	if (pdc->conf.sql.flat_mode){
+		if (pdc->sql_cvt->CreateFlatTables(msg, sql)){
+			GLOG_ERR("get create flat tables error !");
+			return -3;
+		}
+	}
+	else{
+		if (pdc->sql_cvt->CreateTables(msg, sql)){
+			GLOG_ERR("get create tables error !");
+			return -4;
+		}
 	}
 	string outfile = pdc->conf.sql.out_path;
 	outfile += "/";
