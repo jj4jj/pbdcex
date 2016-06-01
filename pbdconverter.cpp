@@ -1,21 +1,15 @@
 #include "dcpots/base/stdinc.h"
 #include "dcpots/base/cmdline_opt.h"
-
+#include "pbdcex.h"
 
 using namespace std;
 
-int main(int argc, char ** argv){
-	//usage
-	//covnert --cpp_out=./	--sql_out=./
-	//-I path
-	//-f file
-	//-m message name
-	//
+int main(int argc, const char ** argv){
 	cmdline_opt_t	cmdline(argc, argv);
 	cmdline.parse("cpp_out:r::generate cpp headers dir;"
-		"sql_out:r::generate mysql sql create table headers dir;"
-		"include:r:I:protobuf include path;"
-		"proto:r:p:protobuf include proto file;"
+        "sql_out:r::generate mysql sql create table headers dir;"
+        "include:r:I:protobuf include path:.;"
+        "proto:r:p:protobuf include proto file;"
 		"message:r:m:convert messsage full type name"
 		);
 	const char * includes_path[16] = { nullptr };
@@ -24,7 +18,8 @@ int main(int argc, char ** argv){
 	const char * cpp_out = cmdline.getoptstr("cpp_out");
 	const char * sql_out = cmdline.getoptstr("sql_out");
 	int	ninc_path = cmdline.getoptnum("include");
-	cout << "includes path num:" << ninc_path << endl;
+
+    cout << "includes path num:" << ninc_path << endl;
 	for (int i = 0; i < ninc_path; ++i){
 		includes_path[i] = cmdline.getoptstr("include", i);
 		cout << includes_path[i] << endl;
@@ -41,7 +36,13 @@ int main(int argc, char ** argv){
 		messages[i] = cmdline.getoptstr("message", i);
 		cout << messages[i] << endl;
 	}
-
+    pbdcex_config_t config;
+    for (int i = 0; i < ninc_path; ++i){
+        config.meta.paths.push_back(includes_path[i]);
+    }
+    for (int i = 0; i < ninc_file; ++i) {
+        config.meta.files.push_back(includes_file[i]);
+    }
 
 	if (!cpp_out && !sql_out){
 		std::cerr << "not found cpp out path and sql out path option " << endl;
@@ -57,12 +58,24 @@ int main(int argc, char ** argv){
 	}
 	
 	if (cpp_out){
-		std::cout << "generating cpp headers to :" << cpp_out << endl;
+        config.cpp.custom_ext_name = ".cex.hpp";
+        config.cpp.out_path = cpp_out;
+        std::cout << "generating cpp headers to :" << cpp_out << " ..." << endl;
 	}
 	if (sql_out){
-		std::cout << "generating sql scripts to :" << sql_out << endl;
+        config.sql.flat_mode = false;
+        config.sql.out_path = sql_out;
+		std::cout << "generating sql scripts to :" << sql_out <<" ..."<< endl;
 	}
 
+    pbdcex_t * pbdc =  pbdcex_create(config);    
+    if (!pbdc){
+        cerr << "error init" << endl;
+        return -1;
+    }
+    int		ret = pbdcex_generate_flat_cpp_header(pbdc, messages[0]);
+    std::cout << "pbdcex convert ret:" << ret << std::endl;
+    pbdcex_destroy(pbdc);
 	return 0;
 }
 

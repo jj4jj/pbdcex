@@ -1,13 +1,14 @@
-#include "base/stdinc.h"
-#include "utility/util_proto.h"
-#include "base/logger.h"
+#include "dcpots/base/stdinc.h"
+#include "dcpots/utility/drs/dcproto.h"
+#include "dcpots/base/logger.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/compiler/importer.h"
-#include "pbdcex.h"
 #include "meta/ext_meta.h"
 #include "generater/flat_cpp_header.h"
 #include "generater/flatmsg_gen.h" //testing
 #include "generater/mysql_gen.h"
+
+#include "pbdcex.h"
 
 using namespace google::protobuf;
 using namespace google::protobuf::compiler;
@@ -43,7 +44,7 @@ pbdcex_create(const pbdcex_config_t & conf){
 		pbdcex_destroy(pdc);
 		return nullptr;
 	}
-	if (pdc->proto.LoadFile(files[0])){
+	if (!pdc->proto.LoadFile(files[0])){
 		GLOG_ERR("proto meta load file:%s erorr !", files[0]);
 		pbdcex_destroy(pdc);
 		return nullptr;
