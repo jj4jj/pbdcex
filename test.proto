@@ -1,0 +1,9 @@
+
+//import "google/protobuf/descriptor.proto";
+//import "extendsions.proto";
+
+message TestC {
+    required int32 a = 1;
+}
+
+
