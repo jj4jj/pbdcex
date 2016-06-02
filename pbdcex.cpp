@@ -97,11 +97,6 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
 	}
 	return 0;
 }
-int		
-pbdcex_generate_flat_cpp_header(pbdcex_t *, int, const char * msgs){
-#warning "todo";
-	return -1;
-}
 
 int		
 pbdcex_generate_mysql_create(pbdcex_t * pdc, const char * msg){

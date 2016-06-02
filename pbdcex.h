@@ -48,8 +48,6 @@ pbdcex_t *	pbdcex_create(const pbdcex_config_t & conf);
 void		pbdcex_destroy(pbdcex_t *);
 
 int		pbdcex_generate_flat_cpp_header(pbdcex_t *, const char * msg);
-int		pbdcex_generate_flat_cpp_header(pbdcex_t *, int, const char * msgs);
-
 int		pbdcex_generate_mysql_create(pbdcex_t *, const char * msg);
 int		pbdcex_generate_mysql_alter(pbdcex_t *, const char * msg, int oldtag = -1);
 

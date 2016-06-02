@@ -91,15 +91,15 @@ string EXTFieldMeta::GetTypeName() {
 	const char * pszTypeName = GetScalarTypeName().c_str();
 	if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING){
 		if (field_desc->type() == FieldDescriptor::TYPE_STRING){
-			string buffer_type_name = "struct { char data[";
+			string buffer_type_name = "pbdcex::string_t<";
 			buffer_type_name += f_length;
-			buffer_type_name += "]; }";
-			return buffer_type_name;
+            buffer_type_name += ">";
+            return buffer_type_name;
 		}
 		else {
-			string buffer_type_name = "struct { size_t length; uint8_t data[";
+			string buffer_type_name = "pbdcex::bytes_t<";
 			buffer_type_name += f_length;
-			buffer_type_name += "]; }";
+			buffer_type_name += ">";
 			return buffer_type_name;
 		}
 	}

@@ -1,5 +1,5 @@
 #!/bin/bash 
-./pbdconverter -ptest.proto  -mTestC --cpp_out=. -I.
+./pbdconverter -ptest.proto -mHello --cpp_out=. -I. -Imeta
 
 
 

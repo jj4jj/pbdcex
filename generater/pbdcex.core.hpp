@@ -1,11 +1,10 @@
 #ifndef _PBDC_CORE_EX_HPP_XX__
 #define _PBDC_CORE_EX_HPP_XX__
-
+#include <algorithm>
 namespace pbdcex {
 template<size_t lmax>
 struct string_t {
     char data[lmax];
-
     //////////////////////////////////////////////////////
     size_t format(const char * fmt, ...){
         va_list ap;
@@ -30,15 +29,48 @@ struct string_t {
     size_t length() const {
         return strlen(data);
     }
-
+    bool operator == (const string_t & rhs) const {
+        return compare(rhs) == 0;
+    }
+    bool operator < (const string_t & rhs) const {
+        return compare(rhs) < 0;
+    }
+    int     compare(const string_t & rhs) const {
+        return strcmp(data, rhs.data);
+    }
+    size_t hash() const { //sdbm_hash? std::hash?
+        std::hash<const char *> hcs;
+        return hcs((char*)data);
+    }
 };
 
 template<size_t lmax, class LengthT=unsigned int>
 struct bytes_t {
     unsigned char data[lmax];
-    LengthT  n;
-
+    LengthT  length;
     //////////////////////////////////////////////////////
+    bool operator == (const bytes_t & rhs) const {
+        return compare(rhs) == 0;
+    }
+    bool operator < (const bytes_t & rhs) const {
+        return compare(rhs) < 0;
+    }
+    int     compare(const bytes_t & rhs) const {
+        if (length < rhs.length){
+            return memcmp(data, rhs.data, length);
+        }
+        else {
+            return memcmp(data, rhs.data, rhs.length);
+        }
+    }
+    size_t hash() const { //sdbm_hash? std::hash?
+        std::hash<std::string> hcs;
+        std::string str;
+        for (int i = 0; i < length; ++i){
+            str.push_back(data[i]);
+        }
+        return hcs(str);
+    }
 };
 
 template<class T, size_t cmax, class LengthT=unsigned int>
@@ -50,20 +82,136 @@ struct array_t {
     void construct(){
         count = 0;
     }
+    bool operator == (const array_t & rhs) const {
+        return compare(rhs) == 0;
+    }
+    bool operator < (const array_t & rhs) const {
+        return compare(rhs) < 0;
+    }
+    int     compare(const array_t & rhs) const {
+        int ret = 0;
+        if (count < rhs.count){
+            for (int i = 0; i < count; ++i){
+                ret = list[i].compare(rhs.list[i]);
+                if (ret){
+                    return ret;
+                }
+            }
+        }
+        else {
+            for (int i = 0; i < rhs.count; ++i){
+                ret = list[i].compare(rhs.list[i]);
+                if (ret){
+                    return ret;
+                }
+            }
+        }
+        return (int)(count - rhs.count);
+    }
+
+
     //linear
-    int lfind(const T & tk) const;
-    int lappend(const T & td, bool shift_overflow = false);
-    int lremove(const T & tk, bool swap_remove = false);
-    int linsert(int pos, const T & td);
-    int lsort(array_t & out) const;
+    int lfind(const T & tk) const {
+        for (size_t i = 0; i < count && i < cmax; ++i){
+            if (list[i] == tk){
+                return i;
+            }
+        }
+        return -1;
+    }
+    int lappend(const T & td, bool shift_overflow = false){
+        if (count >= cmax && !shift_overflow){
+            return -1;
+        }
+        if (count < cmax){
+            list[count] = td;
+            ++count;
+            return 0;
+        }
+        else {
+            if (cmax > 0){
+                memmove(list, list + 1, (cmax - 1)*sizeof(T));
+                list[cmax - 1] = td;
+            }
+        }
+        return 0;
+    }
+    int lremove(int idx, bool swap_remove = false){
+        if (idx < 0 || idx >= count){
+            return -1;
+        }
+        if (swap_remove){
+            list[idx] = list[cmax - 1];
+            list[cmax - 1].construct();
+        }
+        else {
+            memmove(list + idx, list + idx + 1, count - idx - 1);
+        }
+        --count;
+    }
+    int linsert(int idx, const T & td, bool overflow_shift = false){
+        if (count >= cmax && !overflow_shift){
+            return -1;
+        }
+        if (idx >= count){
+            idx = count;
+        }
+        else if (idx < 0){
+            idx = 0;
+        }
+        if (idx >= count){
+            return lappend(td, overflow_shift);
+        }
+        //----------------pos----pos+1------
+        if (count >= cmax){
+            memmove(list + idx + 1, list + idx, (cmax - idx - 1)*sizeof(T));
+            list[idx] = td;
+        }
+        else {
+            memmove(list + idx + 1, list + idx, (count - idx)*sizeof(T));
+            list[idx] = td;
+            ++count;
+        }
+        return 0;
+    }
+    void lsort(array_t & out) const {
+        memcpy(&out, this, sizeof(*this));
+        std::sort(out.list, out.list + out.count);
+    }
 
     //binary-seaching
-    int bfind(const T & tk) const;
-    int binsert(const T & td);
-    int bremove(const T & tk);
-    int lower_bound(const T & tk) const;
-    int upper_bound(const T & tk) const;
-
+    int bfind(const T & tk) const {
+        int idx = lower_bound(tk);
+        if (idx >= 0){
+            if (tk == list[idx]){
+                return idx;
+            }
+        }
+        return -1;
+    }
+    int binsert(const T & td){
+        int idx = lower_bound(tk);
+        return linsert(idx, td, false);
+    }
+    int bremove(const T & tk){
+        int idx = bfind(tk);
+        if (idx < 0) return -1;
+        lremove(idx, false);
+    }
+    int lower_bound(const T & tk) const {
+        T * p = std::lower_bound(list, list + n, tk);
+        if (p == list + n){
+            return -1;
+        }
+        return (p - list) / sizeof(T);
+    }
+    int upper_bound(const T & tk) const {
+        T * p = std::upper_bound(list, list + n, tk);
+        if (p == list + n){
+            return -1;
+        }
+        return (p - list) / sizeof(T);
+    }
     T & operator [](size_t idx){
         assert(idx < count);
         return list[idx];
@@ -276,8 +424,6 @@ struct hashmap_t {
 
 
 };
-
-
 
 
 
