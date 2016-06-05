@@ -1,6 +1,6 @@
 
-pbdcexer: pbdcexer.cpp libpbcex.a
-	g++ -o $@ $^ -std=c++11 -L../dcpots/lib -ldcbase -I../ -lprotobuf -ldl
+pbdcexer: pbdcexer.cpp libpbcex.a ../cxxtemplates/libxctmp.a
+	g++ -o $@ $^ -std=c++11 -L../dcpots/lib -ldcbase -I../ -lprotobuf -ldl -g3
 
 clean:
 	rm -f pbdcexer

@@ -61,7 +61,9 @@ pbdcex_destroy(pbdcex_t * pdc){
 		delete pdc;
 	}
 }
+#include "generater/flat_cpp_header.h"
 extern std::stringstream error_stream;
+
 int		
 pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
 	auto pool = pdc->proto.GetPool();
@@ -70,7 +72,9 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
 		GLOG_ERR("not found msg type:%s (should be full name)", msg);
 		return -1;
 	}
-	GenerateCXXFlat generater(desc);
+	//GenerateCXXFlat generater(desc);
+    CXXFlatMsgGenerater generater(desc);
+
 	EXTMessageMeta	smm;
 	if (smm.AttachDesc(desc)){
 		GLOG_ERR("parse from message desc error :%s !",error_stream.str().c_str());

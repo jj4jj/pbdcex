@@ -3,7 +3,7 @@
 #include "google/protobuf/compiler/importer.h"
 #include <iostream>
 #include <fstream>
-#include "cxtmp/xctmp.h"
+#include "cxxtemplates/xctmp.h"
 
 extern std::stringstream error_stream;
 using namespace std;
@@ -13,6 +13,7 @@ extern std::stringstream error_stream;
 
 /*
 for msg in pb.msgs
+
     struct msg.name | cs.msg_type_name {
         for field in msg.fields
             field.type | cs.field_type  field.name | cs.field_name;
@@ -91,7 +92,7 @@ for msg in pb.msgs
 */
 
 
-class GenerateCXXFlat {
+class CXXFlatMsgGenerater {
     typedef std::unordered_map<const Descriptor *, int>										MsgDegree;
     typedef	std::unordered_map<const Descriptor *, std::unordered_set<const Descriptor *> >	ReverseRef;
     typedef ReverseRef::iterator	ReverseRefItr;
@@ -101,7 +102,7 @@ class GenerateCXXFlat {
     const Descriptor * root;
     std::vector<const Descriptor*>	ordered_desc;
 public:
-    GenerateCXXFlat(const Descriptor * desc){
+    CXXFlatMsgGenerater(const Descriptor * desc){
         root = desc;
     }
     void	DumpFile(const char * file){
@@ -165,44 +166,55 @@ public:
         return oss.str();
     }
     string	ConvertMsg(const Descriptor * desc, const char * indent = "    "){
-        xctmp_t * xc = xctmp_parse("pbdcex");
+ 
+        ifstream ifs("cxx.tmp", ios::in);
+        char cxxbuffer[4098];
+        ifs.getline(cxxbuffer, 4098, 0);
+        
+        xctmp_t * xc = xctmp_parse(cxxbuffer);
+        if (!xc){
+            cerr << "xctmp parse errror !" << endl;
+            return "";
+        }
         //cs.msg.name <- meta
         //cs.field.name <- meta
-        xctmp_push_filter("cs.msg.name", [](const string & p)->string {
-            EXTMessageMeta * m = (EXTMessageMeta*)(stoull(p));
+        xctmp_push_filter(xc, "cs_msg_name", [](const string & p)->string {
+            EXTMessageMeta * m = (EXTMessageMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->msg_desc->name() + "_ST";
         });
-        xctmp_push_filter("cs.field.type", [](const string & p)->string {
-            EXTFieldMeta * m = (EXTMessageMeta*)(stoull(p));
+        xctmp_push_filter(xc, "cs_field_type", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+            cerr << "field_name:" << p << endl;
             return m->GetTypeName();
         });
 
-        xctmp_push_filter("cs.field.name", [](const string & p)->string {
-            EXTFieldMeta * m = (EXTMessageMeta*)(stoull(p));
-            return m->GetVarName);
+        xctmp_push_filter(xc, "cs_field_name", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+            cerr << "field_name:" << p << endl;
+            return m->GetVarName();
         });
-        xctmp_push_filter("msg.name", [](const string & p)->string {
-            EXTMessageMeta * m = (EXTMessageMeta*)(stoull(p));
+        xctmp_push_filter(xc, "msg_name", [](const string & p)->string {
+            EXTMessageMeta * m = (EXTMessageMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->msg_desc->name();
         });
-        xctmp_push_filter("field.is_msg", [](const string & p)->string {
-            EXTFieldMeta * m = (EXTMessageMeta*)(stoull(p));
-            return m->field_desc->message()?"1":"0";
+        xctmp_push_filter(xc, "field_is_msg", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+            return m->field_desc->message_type() ? "1" : "0";
         });
-        xctmp_push_filter("field.is_string", [](const string & p)->string {
-            EXTFieldMeta * m = (EXTMessageMeta*)(stoull(p));
+        xctmp_push_filter(xc, "field_is_string", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->field_desc->type() == google::protobuf::FieldDescriptor::TYPE_STRING ? "1" : "0";
         });
-        xctmp_push_filter("field.is_bytes", [](const string & p)->string {
-            EXTFieldMeta * m = (EXTMessageMeta*)(stoull(p));
+        xctmp_push_filter(xc, "field_is_bytes", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->field_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES ? "1" : "0";
         });
-        xctmp_push_filter("field.count", [](const string & p)->string {
-            EXTFieldMeta * m = (EXTMessageMeta*)(stoull(p));
+        xctmp_push_filter(xc, "field_count", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return to_string(m->z_count);
         });
-        xctmp_push_filter("field.length", [](const string & p)->string {
-            EXTFieldMeta * m = (EXTMessageMeta*)(stoull(p));
+        xctmp_push_filter(xc, "field_length", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return to_string(m->z_length);
         });
 
@@ -233,7 +245,7 @@ public:
         string output;
         string jenv = "{\
         \"meta\":";
-        snprintf(cvbuff, sizeof(cvbuff), "%0x", &msg_meta);
+        snprintf(cvbuff, sizeof(cvbuff), "\"%p\"", &msg_meta);
         jenv += cvbuff;
         jenv += ",\"fields\":[";
         bool head = true;
@@ -241,15 +253,14 @@ public:
             if (!head){
                 jenv += ",";
             }
-            snprintf(cvbuff, sizeof(cvbuff), "%0x", &sfm);
-            jenv += "{\"meta\":" + cvbuff;
+            snprintf(cvbuff, sizeof(cvbuff), "\"%p\"", &sfm);
+            jenv += "{\"meta\":";
+            jenv += cvbuff;
             jenv += "}";
             head = false;
         }
         jenv += "]}";
-        
-        std::cout << "====================" << jenv << endl;
-        
+        cout << jenv << endl;       
         xctmp_render(xc, output, jenv);        
         xctmp_destroy(xc);
         return output;
@@ -259,11 +270,11 @@ public:
         char sz_line_buffer[1024];
 #define	WRITE_LINE(format, ...)		do{\
     snprintf(sz_line_buffer, sizeof(sz_line_buffer), format, ##__VA_ARGS__); \
-    ss_convert_msg << GenerateCXXFlat::repeat(indent, level) << sz_line_buffer << std::endl; \
+    ss_convert_msg << CXXFlatMsgGenerater::repeat(indent, level) << sz_line_buffer << std::endl; \
         }while (false)
 #define	WRITE_STR(format, ...)		do{\
     snprintf(sz_line_buffer, sizeof(sz_line_buffer), format, ##__VA_ARGS__); \
-    ss_convert_msg << GenerateCXXFlat::repeat(indent, level) << sz_line_buffer; \
+    ss_convert_msg << CXXFlatMsgGenerater::repeat(indent, level) << sz_line_buffer; \
         }while (false)
         ////////////////////////////////////////////////////////////////////////////////////
         if (desc->file()->package() != root->file()->package()){
