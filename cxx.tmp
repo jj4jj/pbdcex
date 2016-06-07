@@ -8,9 +8,9 @@ struct {{meta|cs_msg_name}} {
     int     convto({{meta|msg_name}} & tomsg_) const {
         int ret = 0;
         {{!for vf in fields}}
-            {{!if vf|field_count > 0 }}
+            {{!if vf|field_count}}
                 for (int i = 0;i < {{vf|field_name}}.count; ++i){
-                    {{!if vf|field_is_msg = 1 }}
+                    {{!if vf|field_is_msg}}
                         ret += field.name[i].convto(*tomsg_.add_field.name);
                         if (ret) return __LINE__+ret;
                     {{!elif vf|field_is_bytes = 1}}
@@ -22,7 +22,7 @@ struct {{meta|cs_msg_name}} {
                     {{}}
                }
             {{!else}}
-                    {{!if vf|field_is_msg = 1 }}
+                    {{!if vf|field_is_msg}}
                         ret += {{vf.meta|cs_field_name}}.convto(*tomsg_.mutable_{{vf|field_name}});
                         if (ret) return __LINE__+ret;
                     {{!elif vf|field_is_bytes = 1}}
@@ -36,31 +36,37 @@ struct {{meta|cs_msg_name}} {
         {{}}
         return ret;
     }
-    int     convfrom() const {
-        int ret = 0;
-        for field in msg.fields
-            if field.count > 0
-                for (int i = 0;i < field.name .count; ++i){
-                    if field.type | pb.is_msg = 1
-                        ret += field.name[i].convto(*tomsg_.add_field.name);
-                    if (ret) return ret;
-                    elif field.type | pb.is_bytes = 1
-                        tomsg_.add_field.name(field.name[i].data, field.name[i].length);
-                    elif field.type | pb.is_string = 1
-                        tomsg_.add_field.name(field.name[i].data);
-                    else
-                        tomsg_.add_field.name(field.name[i]);
-                }
-            else
-                if field.type | pb.is_msg = 1
-                    ret += field.name|cs.field_name.convto(*tomsg_.mutable_field.name);
-        if (ret) return ret;
-        elif field.type | pb.is_bytes = 1
-            tomsg_.set_field.name(field.name[i].data, field.name[i].length);
-        elif field.type | pb.is_string = 1
-            tomsg_.set_field.name(field.name[i].data);
-        else
-            tomsg_.set_field.name(field.name[i]);
+    int     convfrom(const {{meta|msg_name}} & frommsg_) const {
+		int ret = 0;
+        {{!for vf in fields}}
+            {{!if vf|field_count}}
+				{{vf|field_name}}.count=0;
+                for (int i = 0;i < frommsg_.{{vf|field_name}}_size() && i < {{vf|field_count}}; ++i){
+                    {{!if vf|field_is_msg}}
+                        ret += {{vf|cs_field_name}}[i].convfrom(frommsg_.{{vf|field_name}});
+                        if (ret) return __LINE__+ret;
+                    {{!elif vf|field_is_bytes = 1}}
+                        tomsg_.add_{{vf|field_name}}({{vf.meta|cs_field_name}}[i].data, {{vf.meta|cs_field_name}}[i].length);
+						{{vf|cs_field_name}}[i].
+                    {{!elif vf.meta|field_is_string = 1}}
+                         tomsg_.add_{{vf|field_name}}({{vf.meta|cs_field_name}}[i].data);
+                    {{!else}}
+                        tomsg_.add_{{vf|field_name}}({{vf.meta|cs_field_name}}[i]);
+                    {{}}
+               }
+            {{!else}}
+                    {{!if vf|field_is_msg}}
+                        ret += {{vf.meta|cs_field_name}}.convto(*tomsg_.mutable_{{vf|field_name}});
+                        if (ret) return __LINE__+ret;
+                    {{!elif vf|field_is_bytes = 1}}
+                        tomsg_.set_{{vf|field_name}}({{vf.meta|cs_field_name}}.data, {{vf.meta|cs_field_name}}.length);
+                    {{!elif vf.meta|field_is_string = 1}}
+                        tomsg_.set_{{vf|field_name}}({{vf.meta|cs_field_name}}.data);
+                    {{!else}}
+                        tomsg_.set_{{vf|field_name}}({{vf.meta|cs_field_name}});
+                    {{}}
+            {{}}
+        {{}}
         return ret;
     }
     int     compare(const msg.name | cs.msg_type_name & rhs_) const {
