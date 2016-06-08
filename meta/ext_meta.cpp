@@ -88,113 +88,29 @@ string EXTFieldMeta::GetScalarTypeName(){
 	return pszTypeName;
 }
 string EXTFieldMeta::GetTypeName() {
-	const char * pszTypeName = GetScalarTypeName().c_str();
+	string type_name = GetScalarTypeName().c_str();
 	if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING){
 		if (field_desc->type() == FieldDescriptor::TYPE_STRING){
-			string buffer_type_name = "pbdcex::string_t<";
-			buffer_type_name += f_length;
-            buffer_type_name += ">";
-            return buffer_type_name;
+            type_name = "string_t<";
+            type_name += f_length;
+            type_name += ">";
 		}
 		else {
-			string buffer_type_name = "pbdcex::bytes_t<";
-			buffer_type_name += f_length;
-			buffer_type_name += ">";
-			return buffer_type_name;
+            type_name = "bytes_t<";
+            type_name += f_length;
+            type_name += ">";
 		}
 	}
-	else {
-		return pszTypeName;
-	}
+    if (z_count > 0){
+        type_name = "array_t<" + type_name + ", " + f_count + ">";
+    }
+    return type_name;
 }
 string EXTFieldMeta::GetVarName() {
 	//static const char * type_prefix = ["", "i", "ll", "dw", "ull", "df", "f", "b", "en", "str", "st"];
 	//desc->camelcase_name();
 	string lc_name = field_desc->lowercase_name();
 	return lc_name;
-}
-string EXTFieldMeta::GetScalarConvToMeth(const char * convtomsg_, const string & st_var_name, const string & msg_var_name){
-	auto fmt = field_desc->message_type();
-	string meth = "";
-	string mutable_meth = "set_";
-	if (fmt){
-		mutable_meth = "mutable_";
-	}
-	if (field_desc->is_repeated()){
-		mutable_meth = "add_";
-	}
-	if (fmt){
-		meth += st_var_name;
-		meth += ".convto(*";
-		meth += convtomsg_;
-		meth += "." + mutable_meth;
-		meth += msg_var_name;
-		meth += "()";
-	}
-	else {
-		meth += convtomsg_;
-		meth += "." + mutable_meth;
-		meth += msg_var_name;
-		meth += "(";
-		meth += st_var_name;
-		if (field_desc->type() == FieldDescriptor::TYPE_STRING){
-			meth += ".data";
-		}
-		else if (field_desc->type() == FieldDescriptor::TYPE_BYTES){
-			meth += ".data,";
-			meth += st_var_name;
-			meth += ".length";
-		}
-	}
-	meth += ")";
-	return meth;
-}
-string EXTFieldMeta::GetScalarConvFromMeth(const char * convtomsg_, const string & st_var_name, const string & msg_var_name){
-	auto fmt = field_desc->message_type();
-	string meth = "";
-	if (fmt){
-		meth += st_var_name;
-		meth += ".convfrom(";
-		meth += convtomsg_;
-		meth += ".";
-		meth += msg_var_name;
-		meth += ")";
-	}
-	else {
-		if (field_desc->type() == FieldDescriptor::TYPE_STRING){
-			meth = "strncpy(";
-			meth += st_var_name.c_str();
-			meth += ".data, ";
-			meth += convtomsg_;
-			meth += ".";
-			meth += msg_var_name;
-			meth += ".data(), ";
-			meth += f_length.c_str();
-			meth += "-1)";
-		}
-		else if (field_desc->type() == FieldDescriptor::TYPE_BYTES){
-			meth = "memcpy(";
-			meth += st_var_name.c_str();
-			meth += ".data, ";
-			meth += convtomsg_;
-			meth += ".";
-			meth += msg_var_name;
-			meth += ".data(), std::min((size_t)";
-			meth += f_length.c_str();
-			meth += ", (size_t)";
-			meth += convtomsg_;
-			meth += ".";
-			meth += msg_var_name + ".length()))";
-		}
-		else {
-			meth = st_var_name;
-			meth += " = ";
-			meth += convtomsg_;
-			meth += ".";
-			meth += msg_var_name;
-		}
-	}
-	return meth;
 }
 std::string EXTFieldMeta::GetMysqlFieldType(){
 	switch (field_desc->cpp_type()){

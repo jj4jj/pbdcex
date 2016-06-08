@@ -4,8 +4,7 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/compiler/importer.h"
 #include "meta/ext_meta.h"
-#include "generater/flat_cpp_header.h"
-#include "generater/flatmsg_gen.h" //testing
+#include "generater/cpp_gen.h"
 #include "generater/mysql_gen.h"
 
 #include "pbdcex.h"
@@ -61,7 +60,6 @@ pbdcex_destroy(pbdcex_t * pdc){
 		delete pdc;
 	}
 }
-#include "generater/flat_cpp_header.h"
 extern std::stringstream error_stream;
 
 int		
@@ -72,9 +70,6 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
 		GLOG_ERR("not found msg type:%s (should be full name)", msg);
 		return -1;
 	}
-	//GenerateCXXFlat generater(desc);
-    CXXFlatMsgGenerater generater(desc);
-
 	EXTMessageMeta	smm;
 	if (smm.AttachDesc(desc)){
 		GLOG_ERR("parse from message desc error :%s !",error_stream.str().c_str());
@@ -92,7 +87,14 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
 			file.replace(file.find(".proto"), 6, pdc->conf.cpp.custom_ext_name);
 		}
 		GLOG_IFO("generating file:%s ", file.c_str());
-		generater.DumpFile(file.c_str());
+		//generater.DumpFile(file.c_str());
+        std::string codegen;
+        if (cpph_generate(codegen, desc)){
+            GLOG_ERR("generate code error !");
+            exit(-1);
+        }
+        std::ofstream ofs(file, ios::out);
+        ofs << codegen ;
 		GLOG_IFO("generate code file:%s success !", file.c_str());
 	}
 	catch (exception & e){

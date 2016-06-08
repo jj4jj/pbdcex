@@ -74,7 +74,9 @@ int main(int argc, const char ** argv){
         return -1;
     }
     int		ret = pbdcex_generate_flat_cpp_header(pbdc, messages[0]);
-    std::cout << "pbdcex convert ret:" << ret << std::endl;
+    if(ret){
+        std::cerr << "pbdcex convert error ret: " << ret << std::endl;
+    }
     pbdcex_destroy(pbdc);
 	return 0;
 }

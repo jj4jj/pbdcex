@@ -56,8 +56,6 @@ struct EXTFieldMeta {
 	std::string GetScalarTypeName();
 	std::string GetTypeName();
 	std::string GetVarName();
-	std::string GetScalarConvToMeth(const char * convtomsg_, const std::string & st_var_name, const std::string & msg_var_name);
-	std::string GetScalarConvFromMeth(const char * convtomsg_, const std::string & st_var_name, const std::string & msg_var_name);
 	std::string GetMysqlFieldType();
 };
 
