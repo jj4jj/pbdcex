@@ -168,8 +168,8 @@ public:
     string	ConvertMsg(const Descriptor * desc, const char * indent = "    "){
  
         ifstream ifs("cxx.tmp", ios::in);
-        char cxxbuffer[4098];
-        ifs.getline(cxxbuffer, 4098, 0);
+        char cxxbuffer[10240];
+        ifs.getline(cxxbuffer, 10240, 0);
         
         xctmp_t * xc = xctmp_parse(cxxbuffer);
         if (!xc){
@@ -178,45 +178,50 @@ public:
         }
         //cs.msg.name <- meta
         //cs.field.name <- meta
-        xctmp_push_filter(xc, "cs_msg_name", [](const string & p)->string {
+        xctmp_push_filter(xc, "cs.msg.name", [](const string & p)->string {
             EXTMessageMeta * m = (EXTMessageMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->msg_desc->name() + "_ST";
         });
-        xctmp_push_filter(xc, "cs_field_type", [](const string & p)->string {
+        xctmp_push_filter(xc, "cs.field.type", [](const string & p)->string {
             EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
-            cerr << "field_name:" << p << endl;
+            //cerr << "field_name:" << p << endl;
             return m->GetTypeName();
         });
 
-        xctmp_push_filter(xc, "cs_field_name", [](const string & p)->string {
+        xctmp_push_filter(xc, "cs.field.name", [](const string & p)->string {
             EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
-            cerr << "field_name:" << p << endl;
+            //cerr << "field_name:" << p << endl;
             return m->GetVarName();
         });
-        xctmp_push_filter(xc, "msg_name", [](const string & p)->string {
+        xctmp_push_filter(xc, "msg.name", [](const string & p)->string {
             EXTMessageMeta * m = (EXTMessageMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->msg_desc->name();
         });
-        xctmp_push_filter(xc, "field_is_msg", [](const string & p)->string {
+        xctmp_push_filter(xc, "field.is_msg", [](const string & p)->string {
             EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->field_desc->message_type() ? "1" : "0";
         });
-        xctmp_push_filter(xc, "field_is_string", [](const string & p)->string {
+        xctmp_push_filter(xc, "field.is_string", [](const string & p)->string {
             EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->field_desc->type() == google::protobuf::FieldDescriptor::TYPE_STRING ? "1" : "0";
         });
-        xctmp_push_filter(xc, "field_is_bytes", [](const string & p)->string {
+        xctmp_push_filter(xc, "field.is_bytes", [](const string & p)->string {
             EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return m->field_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES ? "1" : "0";
         });
-        xctmp_push_filter(xc, "field_count", [](const string & p)->string {
+        xctmp_push_filter(xc, "field.count", [](const string & p)->string {
             EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return to_string(m->z_count);
         });
-        xctmp_push_filter(xc, "field_length", [](const string & p)->string {
+        xctmp_push_filter(xc, "field.length", [](const string & p)->string {
             EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
             return to_string(m->z_length);
         });
+        xctmp_push_filter(xc, "field.name", [](const string & p)->string {
+            EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+            return m->field_desc->name();
+        });
+
 
         //cs.msg.name <- meta
         //cs.field.type <- meta
@@ -260,10 +265,11 @@ public:
             head = false;
         }
         jenv += "]}";
-        cout << jenv << endl;       
+        //cout << jenv << endl;       
         xctmp_render(xc, output, jenv);        
         xctmp_destroy(xc);
         return output;
+
 #if 0        
         stringstream ss_convert_msg;
         int level = 0;
