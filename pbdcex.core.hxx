@@ -6,10 +6,12 @@
 //File generated time: {{time}}
 {{ns_begin}}
 {{!for vd in depencies}}#include "{{vd}}"
-{{}}{{!for vmsg in msgs}}
+{{}}
+#include "pbdcex.core.hpp"
 using pbdcex::string_t;
 using pbdcex::bytes_t;
 using pbdcex::array_t;
+{{!for vmsg in msgs}}
 struct {{vmsg.meta|cs.msg.name}} {
     ////////////////////////////////////////////////////////////////////////
     {{!for vf in vmsg.fields}}{{vf.meta|cs.field.type}}       {{vf.meta|cs.field.name}};
@@ -26,7 +28,7 @@ struct {{vmsg.meta|cs.msg.name}} {
             {{!elif vf.meta|field.is_string }}tomsg_.add_{{vf.meta|field.name}}(this->{{vf.meta|cs.field.name}}.list[i].data);
             {{!else}}tomsg_.add_{{vf.meta|field.name}}(this->{{vf.meta|cs.field.name}}.list[i]);{{}}
         }
-        {{!else}}{{!if vf.meta|field.is_msg}}ret = this->{{vf.meta|cs.field.name}}.convto(*tomsg_.mutable_{{vf.meta|field.name}});
+        {{!else}}{{!if vf.meta|field.is_msg}}ret = this->{{vf.meta|cs.field.name}}.convto(*tomsg_.mutable_{{vf.meta|field.name}}());
         if (ret) return __LINE__+ret;
         {{!elif vf.meta|field.is_bytes}}tomsg_.set_{{vf.meta|field.name}}(this->{{vf.meta|cs.field.name}}.data, this->{{vf.meta|cs.field.name}}.length);
         {{!elif vf.meta|field.is_string}}tomsg_.set_{{vf.meta|field.name}}(this->{{vf.meta|cs.field.name}}.data);
@@ -38,32 +40,25 @@ struct {{vmsg.meta|cs.msg.name}} {
 		int ret = 0;
         {{!for vf in vmsg.fields}}{{!if vf.meta|field.is_array}}
         this->{{vf.meta|cs.field.name}}.count=0;
-        for (int i = 0;i < frommsg_.{{vf.meta|field.name}}_size() && i < {{vf.meta|field.count}}; ++i,++(this->{{vf.meta|cs.field.name}}.count)){ {{!if vf.meta|field.is_msg}}
-            ret = this->{{vf.meta|cs.field.name}}.list[i].convfrom(frommsg_.{{vf.meta|field.name}}());
+        for (int i = 0;i < frommsg_.{{vf.meta|field.name}}_size() && i < {{vf.meta|field.count}}; ++i,++(this->{{vf.meta|cs.field.name}}.count)){ 
+            {{!if vf.meta|field.is_msg}}ret = this->{{vf.meta|cs.field.name}}.list[i].convfrom(frommsg_.{{vf.meta|field.name}}());
             if (ret) return __LINE__+ret;
-            {{!elif vf.meta|field.is_bytes}}
-            assert({{vf.meta|field.name}}(i).length() <= {{vf.meta|field.length}});
-            this->{{vf.meta|cs.field.name}}.list[i].length = {{vf.meta|field.name}}(i).length();
-            memcpy(this->{{vf.meta|cs.field.name}}.list[i].data, frommsg_.{{vf.meta|field.name}}(i).data(),
-                  {{vf.meta|field.name}}(i).length());{{!elif vf.meta|field.is_string}}
-            assert({{vf.meta|field.name}}(i).length() < {{vf.meta|field.length}});
-            memcpy(this->{{vf.meta|cs.field.name}}.list[i].data, frommsg_.{{vf.meta|field.name}}(i).data(),
-                   this->{{vf.meta|cs.field.name}}.list[i].length);
-            this->{{vf.meta|cs.field.name}}.list[i].data[this->{{vf.meta|cs.field.name}}.list[i].length]=0;
+            {{!elif vf.meta|field.is_bytes}}assert(frommsg_.{{vf.meta|field.name}}(i).length() <= {{vf.meta|field.length}});
+            this->{{ vf.meta | cs.field.name }}.list[i].length = frommsg_.{{ vf.meta | field.name }}(i).length();
+            memcpy(this->{{vf.meta|cs.field.name}}.list[i].data, frommsg_.{{vf.meta|field.name}}(i).data(),frommsg_.{{vf.meta|field.name}}(i).length());
+            {{ !elif vf.meta | field.is_string }}assert(frommsg_.{{ vf.meta | field.name }}(i).length() < {{ vf.meta | field.length }});
+            this->{{ vf.meta | cs.field.name }}.list[i].assign(frommsg_.{{ vf.meta | field.name }}(i).data());
             {{!else}}this->{{vf.meta|cs.field.name}}.list[i] = frommsg_.{{vf.meta|field.name}};
             {{}}
         }
-        {{!else}}{{!if vf.meta|field.is_msg}}
-        ret = this->{{vf.meta|cs.field.name}}.convfrom(*frommsg_.{{vf.meta|field.name}}());
+        {{!else}}{{!if vf.meta|field.is_msg}}ret = this->{{vf.meta|cs.field.name}}.convfrom(frommsg_.{{vf.meta|field.name}}());
         if (ret) return __LINE__+ret;
-        {{!elif vf.meta|field.is_bytes}}assert({{vf.meta|field.name}}.length() <= {{vf.meta|field.length}});
-        this->{{vf.meta|cs.field.name}}.length = {{vf.meta|field.name}}().length();
+        {{ !elif vf.meta | field.is_bytes }}assert(frommsg_.{{ vf.meta | field.name }}().length() <= {{ vf.meta | field.length }});
+        this->{{vf.meta|cs.field.name}}.length = frommsg_.{{vf.meta|field.name}}().length();
         memcpy(this->{{vf.meta|cs.field.name}}.data, frommsg_.{{vf.meta|field.name}}().data(),
-               {{vf.meta|field.name}}().length());
-        {{!elif vf.meta|field.is_string}}assert({{vf.meta|field.name}}().length() < {{vf.meta|field.length}});
-        memcpy(this->{{vf.meta|cs.field.name}}.data, frommsg_.{{vf.meta|field.name}}().data(),
-               this->{{vf.meta|cs.field.name}}.length);
-        this->{{vf.meta|cs.field.name}}.data[this->{{vf.meta|cs.field.name}}.length]=0;
+              frommsg_.{{vf.meta|field.name}}().length());
+        {{ !elif vf.meta | field.is_string }}assert(frommsg_.{{ vf.meta | field.name }}().length() < {{ vf.meta | field.length }});
+        this->{{vf.meta|cs.field.name}}.assign(frommsg_.{{vf.meta|field.name}}().data());
         {{!else}}this->{{vf.meta|cs.field.name}} = frommsg_.{{vf.meta|field.name}}();
         {{}}{{}}{{}}
         return ret;
@@ -82,13 +77,13 @@ struct {{vmsg.meta|cs.msg.name}} {
         }{{}}{{}}
         return 0;
     }
-    bool    operator == (const msg.name | cs.msg_type_name & rhs_) const {
+    bool    operator == (const {{vmsg.meta|cs.msg.name}} & rhs_) const {
         return this->compare(rhs_) == 0;
     }
-    bool    operator < (const msg.name | cs.msg_type_name & rhs_) const {
+    bool    operator < (const {{vmsg.meta|cs.msg.name}} & rhs_) const {
         return this->compare(rhs_) < 0;
     }
-}
+};
 {{}}
 {{ns_end}}
 #endif
