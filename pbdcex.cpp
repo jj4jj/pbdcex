@@ -81,7 +81,7 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
 		file += "/";			
 		file += desc->file()->name();
 		if (pdc->conf.cpp.custom_ext_name.empty()){
-			file.replace(file.find(".proto"), 6, ".hpb.hpp");
+			file.replace(file.find(".proto"), 6, ".cex.hpp");
 		}
 		else {
 			file.replace(file.find(".proto"), 6, pdc->conf.cpp.custom_ext_name);
