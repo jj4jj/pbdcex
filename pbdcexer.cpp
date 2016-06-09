@@ -19,20 +19,31 @@ int main(int argc, const char ** argv){
 	const char * sql_out = cmdline.getoptstr("sql_out");
 	int	ninc_path = cmdline.getoptnum("include");
 
-    cout << "includes path num:" << ninc_path << endl;
+    cout << "includes paths : ";
 	for (int i = 0; i < ninc_path; ++i){
+        if (i > 0){
+            cout << " , ";
+        }
 		includes_path[i] = cmdline.getoptstr("include", i);
-		cout << includes_path[i] << endl;
+		cout << includes_path[i];
 	}
+    cout << endl;
 	int	ninc_file = cmdline.getoptnum("proto");
-	cout << "includes file num:" << ninc_file << endl;
+    cout << "includes files : ";
 	for (int i = 0; i < ninc_file; ++i){
+        if (i > 0){
+            cout << " , ";
+        }
 		includes_file[i] = cmdline.getoptstr("proto", i);
-		cout << includes_file[i] << endl;
+		cout << includes_file[i];
 	}
+    cout << endl;
 	int nmsg = cmdline.getoptnum("message");
-	cout << "includes message num:" << nmsg << endl;
+	cout << "convert message root : ";
 	for (int i = 0; i < nmsg; ++i){
+        if (i > 0){
+            cout << " , ";
+        }
 		messages[i] = cmdline.getoptstr("message", i);
 		cout << messages[i] << endl;
 	}
@@ -60,12 +71,12 @@ int main(int argc, const char ** argv){
 	if (cpp_out){
         config.cpp.custom_ext_name = ".cex.hpp";
         config.cpp.out_path = cpp_out;
-        std::cout << "generating cpp headers to :" << cpp_out << " ..." << endl;
+        std::cout << "generating cpp headers to dir [" << cpp_out << "] ..." << endl;
 	}
 	if (sql_out){
         config.sql.flat_mode = false;
         config.sql.out_path = sql_out;
-		std::cout << "generating sql scripts to :" << sql_out <<" ..."<< endl;
+        //std::cout << "generating sql scripts to :" << sql_out <<" ..."<< endl;
 	}
 
     pbdcex_t * pbdc =  pbdcex_create(config);    
@@ -75,7 +86,10 @@ int main(int argc, const char ** argv){
     }
     int		ret = pbdcex_generate_flat_cpp_header(pbdc, messages[0]);
     if(ret){
-        std::cerr << "pbdcex convert error ret: " << ret << std::endl;
+        std::cerr << "pbdcex convert error ! code : " << ret << std::endl;
+    }
+    else {
+        std::cout << "message generating success !" << endl;
     }
     pbdcex_destroy(pbdc);
 	return 0;

@@ -86,7 +86,7 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
 		else {
 			file.replace(file.find(".proto"), 6, pdc->conf.cpp.custom_ext_name);
 		}
-		GLOG_IFO("generating file:%s ", file.c_str());
+        //GLOG_IFO("generating file:%s ", file.c_str());
 		//generater.DumpFile(file.c_str());
         std::string codegen;
         if (cpph_generate(codegen, desc)){
@@ -95,7 +95,7 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
         }
         std::ofstream ofs(file, ios::out);
         ofs << codegen ;
-		GLOG_IFO("generate code file:%s success !", file.c_str());
+		//GLOG_IFO("generate code file:%s success !", file.c_str());
 	}
 	catch (exception & e){
 		//GLOG_ERR("generate code error ! for:%s  extra info:", e.what().c_str(), error_stream.str().c_str());
