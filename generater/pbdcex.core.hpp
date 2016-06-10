@@ -404,81 +404,73 @@ struct mmpool_t {
     }
 };
 
+static inline bool   _is_prime(size_t n){
+    for (int i = 2; i < n / 2; ++i){
+        if (n % i == 0){
+            return false;
+        }
+    }
+    return true;
+}
+static inline size_t _next_prime_bigger(size_t n){
+    ++n;
+    while (true){
+        if (_is_prime(n)){
+            return n;
+        }
+        ++n;
+    }
+}
+static inline size_t _next_prime_smaller(size_t n){
+    --n;
+    while (true){
+        if (_is_prime(n)){
+            return n;
+        }
+        --n;
+    }
+}
 
-template<size_t n>
-struct next_prime {
-    enum { value = is_prime<n + 1>::value ? n + 1 : next_prime<n + 1>};
-};
-
-template<size_t n, size_t i>
-struct multiple {
-    enum { value = n % i ? 0: 1};
-};
-
-template<size_t n>
-struct is_prime_loop_i<n, 2> {
-    enum {
-        value = n % 2;
-    };
-};
-
-template<size_t n, size_t i>
-struct is_prime_loop_i {
-    enum {
-        value = multiple<n, i>::value ? 0 : is_prime<n, i - 1>::value
-    };
-};
-
-template<size_t n>
-struct is_prime {
-    enum {
-        value = is_prime_loop_i<n>::value
-    };
-};
-
-template<size_t n, size_t m>
-struct n_next_prime_sum {
-    enum {
-        value = next_prime<n>::value + n_next_prime_sum<next_prime<n>::value, m - 1>::value;
-    };
-};
-template<size_t n>
-struct n_next_prime_sum<n, 0> {
-    enum { value = 0 };
-};
-
-
-template<class T, size_t cmax, class hcf, size_t layer = 3>
+template<class T, size_t cmax, class hcfT, size_t layer = 3>
 struct hashmap_t {
     struct hashmap_entry_t {
         size_t  id;
         size_t  next;
+        size_t  hco;
     };
-    size_t  hash_layer_size[layer];
-    //(cmax*100/load_factor)
-    #define hash_entry_index_size   (n_next_prime_sum<cmax, layer>::value) 
+    struct {
+        size_t  offset;
+        size_t  count;
+    } hash_layer_segment[layer];
+    #define hash_entry_index_size   (2*layer*cmax)
     typedef mmpool_t<T, cmax>                                     pool_t;
     typedef array_t<hashmap_entry_t, hash_entry_index_size+8>     index_t;
     index_t     index_;
     pool_t      mmpool_;
-    size_t      stat_nread;
+    size_t      stat_nprobe;
     size_t      stat_nhit;
     ////////////////////////////////////////////////////////////
     void        construct(){
         memset(&index_, 0, sizeof(index_));
         index_.count = hash_entry_index_size;
         mmpool_.construct();
-        stat_nread = stat_nhit = 1;//for div 0 error
+        stat_nprobe = stat_nhit = 1;//for div 0 error
+        hash_layer_segment[0].offset = 1;
+        hash_layer_segment[0].count = _next_prime_bigger(cmax);
+        for (int i = 1; i < layer; ++i){
+            hash_layer_segment[i].offset = hash_layer_segment[i - 1].offset + hash_layer_segment[i - 1].count;
+            hash_layer_segment[i].count = _next_prime_smaller(hash_layer_segment[i - 1].count);
+        }
     }
     const pool_t &  mmpool() const {return mmpool_;}
     int         load(int rate = 100) const {
         return mmpool_.used() * rate / index_.capacity();
     }
     int         factor(){
-        return load_factor;
+        return cmax * 100 / index_.capacity();
     }
     int         hit(int rate = 100) const {
-        return stat_nhit * rate / stat_nread;
+        return stat_nhit * rate / stat_nprobe;
     }
     bool        empty() const {
         return mmpool_.empty();
@@ -486,16 +478,43 @@ struct hashmap_t {
     bool        full() const {
         return mmpool_.used() >= cmax;
     }
+    size_t      next_slot(size_t hc, size_t ref){
+        assert(ref > 0);
+        assert(index_.list[ref].next == 0);
+        size_t find_slot = 0;
+        if (ref < hash_layer_segment[layer - 1].offset){
+            for (size_t i = 0; i < layer - 1; ++i){
+                ++stat_nprobe;
+                find_slot = hash_layer_segment[i].offset + hc % hash_layer_segment[i].count;
+                if (0 == index_.list[find_slot].id){ //busy
+                    return find_slot;
+                }
+            }
+        }
+        //next one idle
+        find_slot = ref;
+        while (true){
+            ++stat_nprobe;
+            find_slot = hash_layer_segment[layer - 1].offset + (find_slot + 1) % hash_layer_segment[layer - 1].count;
+            if (0 == index_.list[find_slot].id){
+                return find_slot;
+            }
+        }
+        assert(false);
+        return 0;
+    }
     T *         insert(const T & k){
         if (full()){
             return NULL; //full
         }
         //need to optimalization
-        size_t hco = hcf()(k);
-        size_t idx = hco % hash_entry_index_size + 1;
+        size_t hco = hcfT()(k);
+        size_t idx = 1 + hco % hash_layer_segment[0].count;
+        T * pv = NULL;
         while(index_.list[idx].id){//find collision queue tail
-            ++stat_nread;
-            if (*mmpool_.ptr(index_.list[idx].id) == k){
+            ++stat_nprobe;
+            pv = mmpool_.ptr(index_.list[idx].id);
+            if (index_.list[idx].hco == hco && *pv == k){
                 return NULL;
             }
             if(index_.list[idx].next == 0){
@@ -504,16 +523,10 @@ struct hashmap_t {
             idx = index_.list[idx].next;
         }
         if(idx > 0){ //valid idx
-            size_t max_retry = hash_entry_index_size;
             if(index_.list[idx].id > 0){//next , find next pos
-                size_t npos = (idx+1) % hash_entry_index_size + 1;
-                while(max_retry--){ //find a empty node
-                    ++stat_nread;
-                   if(index_.list[npos].id == 0){
-                       break;
-                   }
-                   npos = (npos+1) % hash_entry_index_size + 1;
-                }
+                assert(index_.list[idx].next == 0);
+                size_t npos = next_slot(hco, idx);
+                assert(npos > 0 && index_.list[npos].id == 0);
                 size_t hid = mmpool_.alloc();
                 if(hid == 0){
                     return NULL;
@@ -521,9 +534,12 @@ struct hashmap_t {
                 //#list append collision queue
                 index_.list[idx].next = npos;
                 index_.list[npos].id = hid;
+                index_.list[npos].hco = hco;
                 index_.list[npos].next = 0;
                 ++stat_nhit;
-                return mmpool_.ptr(hid);
+                pv = mmpool_.ptr(hid);
+                *pv = k;
+                return pv;
             }
             else { //head new collison queue
                 size_t hid = mmpool_.alloc();
@@ -532,27 +548,31 @@ struct hashmap_t {
                 }
                 hashmap_entry_t & he = index_.list[idx];
                 he.id = hid;
+                he.hco = hco;
                 he.next = 0;
                 ++stat_nhit;
-                return mmpool_.ptr(hid);
+                pv = mmpool_.ptr(hid);
+                *pv = k;
+                return pv;
             }
         }
         return NULL;
     }
     int         remove(const T & k){
         //need to optimalization
-        size_t hco = hcf()(k);
-        size_t idx = hco % hash_entry_index_size + 1;
+        size_t hco = hcfT()(k);
+        size_t idx = 1 + hco % hash_layer_segment[0].count;
         size_t pidx = 0;
         while(idx){
             if(index_.list[idx].id){
-                ++stat_nread;
+                ++stat_nprobe;
                 T * p = mmpool_.ptr(index_.list[idx].id);
-                if (*p == k){
+                if (index_.list[idx].hco == hco && *p == k){
                     ++stat_nhit;
                     //remove ith
                     mmpool_.free(index_.list[idx].id);
                     index_.list[idx].id = 0;
+                    index_.list[idx].hco = 0;
                     if(pidx){
                         index_.list[pidx].next = index_.list[idx].next;
                     }
@@ -567,23 +587,20 @@ struct hashmap_t {
     }
     T *         find(const T & k){
         //need to optimalization
-        size_t hco = hcf()(k);
-        size_t idx = hco % hash_entry_index_size;
-        size_t max_retry = hash_entry_index_size;
+        size_t hco = hcfT()(k);
+        size_t idx = 1 + hco % hash_layer_segment[0].count;
         while(index_.list[idx].id){
-            ++stat_nread;
-            T * p = mmpool_.ptr(index_.list[idx].id);
-            if (*p == k){
+            ++stat_nprobe;
+            T * pv = mmpool_.ptr(index_.list[idx].id);
+            if (index_.list[idx].hco == hco && *pv == k){
                 ++stat_nhit;
-                return p;
+                return pv;
             }
             idx = index_.list[idx].next;
         }
         return NULL;
     }
-
 };
-
 
 };
 
