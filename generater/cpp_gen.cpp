@@ -24,10 +24,8 @@ class CXXFlatMsgGenerater {
     xctmp_t         * xctmp{ nullptr };
 public:
     CXXFlatMsgGenerater(const Descriptor * desc);
-    void	DumpFile(const char * file);
     int     Init(const char * pszTmpl);
-    string	GetCodeText();
-    string	ConvertMsg(const Descriptor * desc);
+    int	    GetCodeText(std::string & code);
     void	TopologySort(std::vector<const Descriptor * > & msgs);
 };
 
@@ -35,10 +33,6 @@ public:
 extern std::stringstream error_stream;
 CXXFlatMsgGenerater::CXXFlatMsgGenerater(const Descriptor * desc){
     root = desc;
-}
-void	CXXFlatMsgGenerater::DumpFile(const char * file){
-    ofstream ofs(file, ios::out);
-    ofs << GetCodeText() << endl;
 }
 int     CXXFlatMsgGenerater::Init(const char * pszTmpl){
     FILE* pf = fopen(pszTmpl, "r");
@@ -72,13 +66,17 @@ int     CXXFlatMsgGenerater::Init(const char * pszTmpl){
         EXTMessageMeta * m = (EXTMessageMeta*)(strtoull(p.c_str(), NULL, 16));
         return m->msg_desc->name() + "_ST";
     });
-    xctmp_push_filter(xctmp, "cs.field.type", [](const string & p)->string {
+    xctmp_push_filter(xctmp, "cs.field.wtype", [](const string & p)->string {
         EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
         string r = m->GetTypeName();
-        if (r.length() < 40){
-            r.append(40 - r.length(), ' ');
+        if (r.length() < 32){
+            r.append(32 - r.length(), ' ');
         }
         return r;
+    });
+    xctmp_push_filter(xctmp, "cs.field.type", [](const string & p)->string {
+        EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+        return m->GetTypeName();
     });
     xctmp_push_filter(xctmp, "cs.field.name", [](const string & p)->string {
         EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
@@ -100,6 +98,47 @@ int     CXXFlatMsgGenerater::Init(const char * pszTmpl){
     xctmp_push_filter(xctmp, "field.is_array", [](const string & p)->string {
         EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
         return m->field_desc->is_repeated() ? "1" : "0";
+    });
+    xctmp_push_filter(xctmp, "field.is_num", [](const string & p)->string {
+        EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+        switch (m->field_desc->cpp_type()){
+            case google::protobuf::FieldDescriptor::CPPTYPE_INT32 :
+            case google::protobuf::FieldDescriptor::CPPTYPE_INT64 :
+            case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+            case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+            case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+            case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+            case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+                return "1";
+        }
+        return "0";
+    });
+
+    xctmp_push_filter(xctmp, "field.is_bool", [](const string & p)->string {
+        EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+        switch (m->field_desc->cpp_type()){
+        case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+            return "1";
+        }
+        return "0";
+    });
+
+    xctmp_push_filter(xctmp, "field.is_enum", [](const string & p)->string {
+        EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+        switch (m->field_desc->cpp_type()){
+        case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+            return "1";
+        }
+        return "0";
+    });
+    xctmp_push_filter(xctmp, "field.enum_type", [](const string & p)->string {
+        EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+        return m->field_desc->default_value_enum()->name();
+    });
+
+    xctmp_push_filter(xctmp, "field.enum_default", [](const string & p)->string {
+        EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
+        return std::to_string(m->field_desc->default_value_enum()->number());
     });
     xctmp_push_filter(xctmp, "field.name", [](const string & p)->string {
         EXTFieldMeta * m = (EXTFieldMeta*)(strtoull(p.c_str(), NULL, 16));
@@ -171,10 +210,35 @@ int     CXXFlatMsgGenerater::Init(const char * pszTmpl){
     //field.msg
     return 0;
 }
-string	CXXFlatMsgGenerater::GetCodeText(){
+static inline void _str_trim_empty_line(std::string & output){
+    std::string::size_type beg = 0, fnd = 0;
+    while (true){
+        fnd = output.find('\n', beg);
+        if (fnd == std::string::npos){
+            break;
+        }
+        bool eptl = true;
+        for (int i = beg; i <= fnd; ++i){
+            if (output[i] != ' ' &&
+                output[i] != '\t' &&
+                output[i] != '\r' &&
+                output[i] != '\n'){
+                eptl = false;
+                break;
+            }
+        }
+        if (eptl && fnd >= beg){
+            output.erase(beg, fnd - beg + 1);
+        }
+        else {
+            beg = fnd + 1;
+        }
+    }
+}
+int	CXXFlatMsgGenerater::GetCodeText(std::string & output){
     if (!xctmp && Init("pbdcex.core.hxx")){
         std::cerr << "init pbdcex.core.hxx for templates error !" << std::endl;
-        return "";
+        return -1;
     }
     TopologySort(ordered_desc);
     std::stringstream oss;
@@ -227,12 +291,11 @@ string	CXXFlatMsgGenerater::GetCodeText(){
     for (int i = 0; i < (int)ordered_desc.size(); ++i){
         if (vems[i].AttachDesc(ordered_desc[i])){
             fprintf(stderr, "parsing message type:%s error ! (check contraints)", ordered_desc[i]->full_name().c_str());
-            return "";
+            return -2;
         }
     }
     //msg, meta , fields    
     char cvbuff[64] = { 0 };
-    string output;
     string jenv = "{\"msgs\":[";
     bool mhead = true;
     for (int i = 0; i < (int)vems.size(); ++i){
@@ -270,9 +333,14 @@ string	CXXFlatMsgGenerater::GetCodeText(){
         jenv += "]}";
     }
     jenv += "]}";
-    //cout << jenv << endl;       
-    xctmp_render(xctmp, output, jenv);
-    return output;
+    int ret = xctmp_render(xctmp, output, jenv);
+    if (ret){
+        fprintf(stderr, "templates render error :%d !", ret);
+        return -4;
+    }
+    //clear empty line
+    _str_trim_empty_line(output);
+    return 0;
 }
 void	CXXFlatMsgGenerater::TopologySort(std::vector<const Descriptor * > & msgs){
     msgs.clear();
@@ -325,6 +393,5 @@ void	CXXFlatMsgGenerater::TopologySort(std::vector<const Descriptor * > & msgs){
 }
 int cpph_generate(std::string & code, const google::protobuf::Descriptor * msg){
     CXXFlatMsgGenerater cgen(msg);
-    code = cgen.GetCodeText();
-    return 0;
+    return cgen.GetCodeText(code);    
 }

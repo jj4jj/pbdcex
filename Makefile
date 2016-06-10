@@ -7,8 +7,8 @@ clean:
 	rm -f libpbcex.a
 	rm -f *.o
 
-htest: test.cpp
-	g++ test.cpp -I./generater test.pb.cc extensions.pb.cc -o htest -lprotobuf --std=c++11
+htest: test.cpp ./generater/pbdcex.core.hpp
+	g++ test.cpp -g3 -I./generater test.pb.cc extensions.pb.cc -o htest -lprotobuf --std=c++11
 
 
 libpbcex.a: pbdcex.cpp meta/*.cpp meta/*.cc generater/*.cpp generater/*.h
