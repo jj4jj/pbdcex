@@ -66,25 +66,26 @@ int main(){
             return h.id;
         };
     };
-    static pbdcex::hashmap_t<Hello_ST, 100, hc>  hash;
+    static pbdcex::hashtable_t<Hello_ST, 10000, hc, 10>  hash;
     hash.construct();
-    printf("hash size:%zu load:%d hit:%d factor:%d\n", 
-        sizeof(hash), hash.load(), hash.hit(), hash.factor());
+    std::string dstr;
+    printf("%s\n", hash.stat(dstr));
     for (int i = 0; i < 10000; ++i){
         Hello_ST h1;
-        h1.id = rand();
+        h1.id = rand()%1000;
         auto p = hash.insert(h1);
-        if (p && rand() % 100 < 50){
+        if (p && rand() % 100 < 90){
             auto pf = hash.find(h1);
             assert(pf == p);
+            pf = hash.insert(h1);
+            assert(pf == NULL);
             hash.remove(h1);
             pf = hash.find(h1);
             assert(pf == NULL);
         }
     }
-    printf("after random insert/remove hash size:%zu load:%d hit:%d\n",
-        sizeof(hash), hash.load(), hash.hit());
-    printf("hash mmpool:%zu/%zu\n", hash.mmpool().used(), hash.mmpool().capacity());
 
+    dstr.clear();
+    printf("after insert %s\n", hash.stat(dstr));
     return 0;
 }
