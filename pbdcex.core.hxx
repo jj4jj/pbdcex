@@ -144,7 +144,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         size_t avhs[] = {
         {{!for vf in vmsg.pkfields}}
         {{!if vf.meta|field.is_array}}
-             this->{{vf.meta|cs.field.name}}.hash<{{vf.meta|cs.field.type}},{{vf.meta|field.count}}>(),
+             this->{{vf.meta|cs.field.name}}.hash(),
         {{!elif vf.meta|field.is_num}}
             (size_t)(this->{{vf.meta|cs.field.name}}),
         {{!else}}
