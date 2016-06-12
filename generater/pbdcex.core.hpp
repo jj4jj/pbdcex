@@ -11,42 +11,38 @@
 namespace pbdcex {
 namespace util {
     static inline uint64_t FNV_1A_Hash64(const unsigned char * data, size_t zdata){
-        const uint64_t _FNV_offset_basis = 14695981039346656037ULL;
-        const uint64_t _FNV_prime = 1099511628211ULL;
-        uint64_t hashv = _FNV_offset_basis;
+        uint64_t hashv = 14695981039346656037ULL;
         if (zdata > 0){
             for (size_t i = 0; i < zdata; ++i)
             {	// fold in another byte
                 hashv ^= (uint64_t)data[i];
-                hashv *= _FNV_prime;
+                hashv *= 1099511628211ULL;
             }
         }
         else {
             for (size_t i = 0; data[i] != 0 ; ++i)
             {	// fold in another byte
                 hashv ^= (uint64_t)data[i];
-                hashv *= _FNV_prime;
+                hashv *= 1099511628211ULL;
             }
         }
         hashv ^= hashv >> 32;
         return (hashv);
     }
     static inline size_t FNV_1A_Hash32(const unsigned char * data, size_t zdata){
-        const uint32_t _FNV_offset_basis = 2166136261U;
-        const uint32_t _FNV_prime = 16777619U;
-        uint32_t hashv = _FNV_offset_basis;
+        uint32_t hashv = 2166136261U;
         if (zdata > 0){
             for (size_t i = 0; i < zdata; ++i)
             {	// fold in another byte
                 hashv ^= (uint32_t)data[i];
-                hashv *= _FNV_prime;
+                hashv *= 16777619U;
             }
         }
         else {
             for (size_t i = 0; data[i] != 0; ++i)
             {	// fold in another byte
                 hashv ^= (uint32_t)data[i];
-                hashv *= _FNV_prime;
+                hashv *= 16777619U;
             }
         }
         return (hashv);
@@ -79,27 +75,31 @@ namespace util {
     }
 
     template<class T>
-    size_t hash(const T & v){
-        return v.hash();
-    }
-    template<>
-    size_t hash<size_t>(const size_t & v){
-        return v;
-    }
-    template<>
-    size_t hash<double>(const double &  v){
-        return (size_t)v;
-    }
-
-    template<class T>
     struct Hash {
         size_t operator ()(const T & td) const {
-            return hash<T>(td);
+            return td.hash();
         }
     };
 
+    template<>
+    struct Hash<size_t> {
+        size_t operator ()(const size_t & td) const {
+            return td;
+        }
+    };
+
+
+    template<>
+    struct Hash<double> {
+        size_t operator ()(const double & td) const {
+            return (size_t)td;
+        }
+    };
+
+
+
 }
-size_t hash_code_merge_multi_value(size_t vs[], size_t n){
+inline size_t hash_code_merge_multi_value(size_t vs[], size_t n){
     return util::FNV_1A_Hash64((unsigned char*)&vs[0], n*sizeof(size_t));
 }
 template<class T, class P>
@@ -252,18 +252,19 @@ struct array_t {
     /////////////////////////////////
     size_t hash() const {
         //five element 
-        if (this->count == 0){
-            return 13131313;
+        if (this->count == 0U){
+            return 13131313U;
         }
         size_t hvs[5] = { 0 };
         size_t hvl = this->count;
         size_t gap = 1;
-        if (this->count > 5){
+        auto hf = util::Hash<T>();
+        if (this->count > 5U){
             hvl = 5;
-            gap = this->count / 5;
+            gap = this->count / 5U;
         }
-        for (int i = 0; i < this->count; i += gap){
-            hvs[i] = util::hash<T>(this->list[i]);
+        for (size_t i = 0; i < this->count; i += gap){
+            hvs[i] = hf(this->list[i]);
         }
         return util::FNV_1A_Hash64((unsigned char *)hvs, hvl*sizeof(size_t));
     }
