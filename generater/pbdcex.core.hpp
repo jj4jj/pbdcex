@@ -8,6 +8,99 @@
 #include <string>
 #include <algorithm>
 namespace pbdcex {
+namespace util {
+    uint64_t FNV_1A_Hash64(const unsigned char * data, size_t zdata){
+        const uint64_t _FNV_offset_basis = 14695981039346656037ULL;
+        const uint64_t _FNV_prime = 1099511628211ULL;
+        uint64_t hashv = _FNV_offset_basis;
+        if (zdata > 0){
+            for (size_t i = 0; i < zdata; ++i)
+            {	// fold in another byte
+                hashv ^= (uint64_t)data[i];
+                hashv *= _FNV_prime;
+            }
+        }
+        else {
+            for (size_t i = 0; data[i] != 0 ; ++i)
+            {	// fold in another byte
+                hashv ^= (uint64_t)data[i];
+                hashv *= _FNV_prime;
+            }
+        }
+        hashv ^= hashv >> 32;
+        return (hashv);
+    }
+    size_t FNV_1A_Hash32(const unsigned char * data, size_t zdata){
+        const uint32_t _FNV_offset_basis = 2166136261U;
+        const uint32_t _FNV_prime = 16777619U;
+        uint32_t hashv = _FNV_offset_basis;
+        if (zdata > 0){
+            for (size_t i = 0; i < zdata; ++i)
+            {	// fold in another byte
+                hashv ^= (uint32_t)data[i];
+                hashv *= _FNV_prime;
+            }
+        }
+        else {
+            for (size_t i = 0; data[i] != 0; ++i)
+            {	// fold in another byte
+                hashv ^= (uint32_t)data[i];
+                hashv *= _FNV_prime;
+            }
+        }
+        return (hashv);
+    }
+    static inline bool   _is_prime(size_t n){
+        for (size_t i = 2; i < n / 2; ++i){
+            if (n % i == 0){
+                return false;
+            }
+        }
+        return true;
+    }
+    static inline size_t _next_prime_bigger(size_t n){
+        ++n;
+        while (true){
+            if (util::_is_prime(n)){
+                return n;
+            }
+            ++n;
+        }
+    }
+    static inline size_t _next_prime_smaller(size_t n){
+        --n;
+        while (true){
+            if (util::_is_prime(n)){
+                return n;
+            }
+            --n;
+        }
+    }
+
+    template<class T>
+    size_t hash(const T & v){
+        return v.hash();
+    }
+    template<>
+    size_t hash<size_t>(const size_t & v){
+        return v;
+    }
+    template<>
+    size_t hash<double>(const double &  v){
+        return (size_t)v;
+    }
+
+    template<class T>
+    struct Hash {
+        size_t operator ()(const T & td) const {
+            return hash<T>(td);
+        }
+    };
+
+}
+size_t hash_code_merge_multi_value(size_t vs[], size_t n){
+    return util::FNV_1A_Hash64((unsigned char*)&vs[0], n*sizeof(size_t));
+}
 template<class T, class P>
 struct serializable_t {
     int dumps(std::string & str) const {
@@ -53,8 +146,11 @@ struct serializable_t {
 
 template<size_t lmax>
 struct string_t {
-    char data[lmax];
+    char    data[lmax];
     /////////////////////////////////////////////////////////////
+    size_t hash() const { //fnv
+        return util::FNV_1A_Hash64((unsigned char *)data, 0);
+    }
     static string_t & assign(string_t & str, const char * cs){
         str.assign(cs);
         return str;
@@ -104,17 +200,16 @@ struct string_t {
     int     compare(const string_t & rhs) const {
         return strcmp(data, rhs.data);
     }
-    size_t hash() const { //sdbm_hash? std::hash?
-        std::hash<const char *> hcs;
-        return hcs((char*)data);
-    }
 };
 
 template<size_t lmax, class LengthT = unsigned int>
 struct bytes_t {
-    unsigned char data[lmax];
-    LengthT  length;
+    unsigned char   data[lmax];
+    LengthT         length;
     //////////////////////////////////////////////////////
+    size_t hash() const { //fnv
+        return FNV_1A_Hash64(data, length);
+    }
     void  construct(){
         this->data[0] = 0;
         this->length = 0;
@@ -146,22 +241,31 @@ struct bytes_t {
             return memcmp(data, rhs.data, rhs.length);
         }
     }
-    size_t hash() const { //sdbm_hash? std::hash?
-        std::hash<std::string> hcs;
-        std::string str;
-        for (int i = 0; i < length; ++i){
-            str.push_back(data[i]);
-        }
-        return hcs(str);
-    }
 };
 
 template<class T, size_t cmax, class LengthT=unsigned int>
 struct array_t {
-    T list[cmax];
-    LengthT count;
+    T           list[cmax];
+    LengthT     count;
 
     /////////////////////////////////
+    size_t hash() const {
+        //five element 
+        if (this->count == 0){
+            return 13131313;
+        }
+        size_t hvs[5] = { 0 };
+        size_t hvl = this->count;
+        size_t gap = 1;
+        if (this->count > 5){
+            hvl = 5;
+            gap = this->count / 5;
+        }
+        for (int i = 0; i < this->count; i += gap){
+            hvs[i] = util::hash<T>(this->list[i]);
+        }
+        return util::FNV_1A_Hash64((unsigned char *)hvs, hvl*sizeof(size_t));
+    }
     void construct(){
         count = 0;
     }
@@ -408,34 +512,6 @@ struct mmpool_t {
         }
     }
 };
-
-static inline bool   _is_prime(size_t n){
-    for (size_t i = 2; i < n / 2; ++i){
-        if (n % i == 0){
-            return false;
-        }
-    }
-    return true;
-}
-static inline size_t _next_prime_bigger(size_t n){
-    ++n;
-    while (true){
-        if (_is_prime(n)){
-            return n;
-        }
-        ++n;
-    }
-}
-static inline size_t _next_prime_smaller(size_t n){
-    --n;
-    while (true){
-        if (_is_prime(n)){
-            return n;
-        }
-        --n;
-    }
-}
-
 //multi layer hash table implementation
 //----------
 //------------------
@@ -444,7 +520,7 @@ static inline size_t _next_prime_smaller(size_t n){
 //1.create a link list in multiple layer
 //2.in last max layer linear probe solving
 
-template<class T, size_t cmax, class hcfT, size_t layer = 3>
+template<class T, size_t cmax, size_t layer = 3, class hcfT = util::Hash<T>>
 struct hashtable_t {
     struct hashmap_entry_t {
         size_t  id;
@@ -455,7 +531,7 @@ struct hashtable_t {
         size_t  offset;
         size_t  count;
     } hash_layer_segment[layer];
-    #define hash_entry_index_size   (2*layer*cmax)
+    #define hash_entry_index_size   (layer*cmax*150/100)
     typedef mmpool_t<T, cmax>                                     pool_t;
     typedef array_t<hashmap_entry_t, hash_entry_index_size+8>     index_t;
     index_t     index_;
@@ -473,10 +549,10 @@ struct hashtable_t {
             stat_hit_read = stat_probe_read = 1;//for div 0 error
         //bigger and bigger but max is limit
         hash_layer_segment[0].offset = 1;
-        size_t hash_layer_max_size = _next_prime_bigger(cmax);
+        size_t hash_layer_max_size = util::_next_prime_bigger(cmax);
         hash_layer_segment[layer - 1].count = hash_layer_max_size;
         for (int i = layer - 2 ; i >= 0; --i){
-            hash_layer_segment[i].count = _next_prime_smaller(hash_layer_segment[i + 1].count);
+            hash_layer_segment[i].count = util::_next_prime_smaller(hash_layer_segment[i + 1].count);
         }
         for (size_t i = 1; i < layer; ++i){
             hash_layer_segment[i].offset = hash_layer_segment[i - 1].offset + hash_layer_segment[i - 1].count;

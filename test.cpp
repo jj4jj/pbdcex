@@ -66,7 +66,7 @@ int main(){
             return h.id;
         };
     };
-    static pbdcex::hashtable_t<Hello_ST, 10000, hc, 10>  hash;
+    static pbdcex::hashtable_t<Hello_ST, 10000>  hash;
     hash.construct();
     std::string dstr;
     printf("%s\n", hash.stat(dstr));

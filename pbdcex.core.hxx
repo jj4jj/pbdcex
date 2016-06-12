@@ -129,6 +129,32 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
     bool    operator < (const {{vmsg.meta|cs.msg.name}} & rhs_) const {
         return this->compare(rhs_) < 0;
     }
+    size_t hash() const {
+        {{!if vmsg.pkfields_num < 2}}
+        {{!for vf in vmsg.pkfields}}
+        {{!if vf.meta|field.is_array}}
+        return this->{{vf.meta|cs.field.name}}.hash();
+        {{!elif vf.meta|field.is_num}}
+        return (size_t)(this->{{vf.meta|cs.field.name}});
+        {{!else}}
+        return this->{{vf.meta|cs.field.name}}.hash();
+        {{}}
+        {{}}
+        {{!else}}
+        size_t avhs[] = {
+        {{!for vf in vmsg.pkfields}}
+        {{!if vf.meta|field.is_array}}
+             this->{{vf.meta|cs.field.name}}.hash<{{vf.meta|cs.field.type}},{{vf.meta|field.count}}>(),
+        {{!elif vf.meta|field.is_num}}
+            (size_t)(this->{{vf.meta|cs.field.name}}),
+        {{!else}}
+            this->{{vf.meta|cs.field.name}}.hash(),
+        {{}}
+        {{}}
+        };
+        return pbdcex::hash_code_merge_multi_value(avhs, {{vmsg.pkfields_num}});
+        {{}}
+    }
 };
 {{}}
 {{ns_end}}

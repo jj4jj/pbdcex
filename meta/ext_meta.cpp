@@ -210,7 +210,7 @@ int     EXTMessageMeta::ParseSubFields(){
 }
 int		EXTMessageMeta::ParsePKS(){
 	string::size_type bpos = 0, fpos = 0;
-	while (true && !m_pks.empty()){
+	while (!m_pks.empty()){
 		fpos = m_pks.find(',', bpos);
 		string f_field_name = "";
 		if (fpos != string::npos && fpos > bpos){

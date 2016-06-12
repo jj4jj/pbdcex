@@ -24,7 +24,7 @@ message Hello {
     option(m_cn)="ssss";
     option(m_desc)="hello, world";
     option(m_relchk)="";
-    option(m_pks)="id";
+    option(m_pks)="id,myworld";
 
     optional int32 id = 1[(f_cn)="id",(f_desc)="id"];
     repeated string myworld = 2[(f_length)="32",(f_count)="32"];

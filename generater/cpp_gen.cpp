@@ -330,9 +330,11 @@ int	CXXFlatMsgGenerater::GetCodeText(std::string & output){
             jenv += cvbuff;
             jenv += "}";
         }
-        jenv += "]}";
+        jenv += "],\"pkfields_num\":" + std::to_string(vems[i].pks_fields.size());
+        jenv += "}";
     }
     jenv += "]}";
+    //std::cout << jenv << std::endl;
     int ret = xctmp_render(xctmp, output, jenv);
     if (ret){
         fprintf(stderr, "templates render error :%d !", ret);
