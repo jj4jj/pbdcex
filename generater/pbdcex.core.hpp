@@ -1,10 +1,12 @@
 #ifndef __PBDCEX_CORE_EX_HPP_XX__
 #define __PBDCEX_CORE_EX_HPP_XX__
-#include <algorithm>
 #include <cstdio>
 #include <cstdarg>
 #include <cstdint>
+#include <cstring>
+#include <cassert>
 #include <string>
+#include <algorithm>
 namespace pbdcex {
 template<class T, class P>
 struct serializable_t {
@@ -69,8 +71,8 @@ struct string_t {
         return n;
     }
     int assign(const char * s){
-        if (!s){ return 0; }
-        int l = strlen(s);
+        if (!s){ return 0;}
+        size_t l = strlen(s);
         if (l > lmax){ l = lmax - 1; }
         memcpy(data, s, l);
         data[l]=0;
@@ -108,7 +110,7 @@ struct string_t {
     }
 };
 
-template<size_t lmax, class LengthT=unsigned int>
+template<size_t lmax, class LengthT = unsigned int>
 struct bytes_t {
     unsigned char data[lmax];
     LengthT  length;
@@ -173,20 +175,23 @@ struct array_t {
         return compare(rhs) < 0;
     }
     int  compare(const array_t & rhs) const {
-        int ret = 0;
         if (count < rhs.count){
-            for (int i = 0; i < count; ++i){
-                ret = list[i].compare(rhs.list[i]);
-                if (ret){
-                    return ret;
+            for (LengthT i = 0; i < count; ++i){
+                if (list[i] < rhs.list[i]){
+                    return -1;
+                }
+                else if (!(list[i] == rhs.list[i])){
+                    return 1;
                 }
             }
         }
         else {
-            for (int i = 0; i < rhs.count; ++i){
-                ret = list[i].compare(rhs.list[i]);
-                if (ret){
-                    return ret;
+            for (LengthT i = 0; i < rhs.count; ++i){
+                if (list[i] < rhs.list[i]){
+                    return -1;
+                }
+                else if (!(list[i] == rhs.list[i])){
+                    return 1;
                 }
             }
         }
@@ -220,15 +225,15 @@ struct array_t {
         return 0;
     }
     int lremove(int idx, bool swap_remove = false){
-        if (idx < 0 || idx >= count){
+        if (idx < 0 || (LengthT)idx >= count){
             return -1;
         }
         if (swap_remove){
             list[idx] = list[cmax - 1];
-            list[cmax - 1].construct();
+            //list[cmax - 1].construct();
         }
         else {
-            memmove(list + idx, list + idx + 1, count - idx - 1);
+            memmove(list + idx, list + idx + 1, (count - idx - 1)*sizeof(T));
         }
         --count;
         return 0;
@@ -237,13 +242,13 @@ struct array_t {
         if (count >= cmax && !overflow_shift){
             return -1;
         }
-        if (idx >= count){
+        if ((LengthT)idx >= count){
             idx = count;
         }
         else if (idx < 0){
             idx = 0;
         }
-        if (idx == count){
+        if ((LengthT)idx == count){
             return lappend(td, overflow_shift);
         }
         //--overlay------idx------>-----idx+1------------------------------
@@ -319,7 +324,7 @@ struct mmpool_t {
     void   construct(){
         memset(this, 0, sizeof(*this));
         allocator_.count = cmax;
-        for (int i = 0; i < mmpool_bit_block_count; ++i){
+        for (size_t i = 0; i < mmpool_bit_block_count; ++i){
             bmp_[i] = 0xFFFFFFFFFFFFFFFFULL;//all set 1
         }
         used_ = 0;
@@ -405,7 +410,7 @@ struct mmpool_t {
 };
 
 static inline bool   _is_prime(size_t n){
-    for (int i = 2; i < n / 2; ++i){
+    for (size_t i = 2; i < n / 2; ++i){
         if (n % i == 0){
             return false;
         }
@@ -473,7 +478,7 @@ struct hashtable_t {
         for (int i = layer - 2 ; i >= 0; --i){
             hash_layer_segment[i].count = _next_prime_smaller(hash_layer_segment[i + 1].count);
         }
-        for (int i = 1; i < layer; ++i){
+        for (size_t i = 1; i < layer; ++i){
             hash_layer_segment[i].offset = hash_layer_segment[i - 1].offset + hash_layer_segment[i - 1].count;
         }
         assert(hash_entry_index_size >= hash_layer_segment[layer - 1].count + hash_layer_segment[layer - 1].offset);

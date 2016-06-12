@@ -42,7 +42,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         tomsg_.Clear();
         {{!for vf in vmsg.fields}}
         {{!if vf.meta|field.is_array}}
-        for (int i = 0;i < {{vf.meta|field.name}}.count; ++i){
+        for (size_t i = 0;i < {{vf.meta|field.name}}.count; ++i){
             {{!if vf.meta|field.is_msg}}
             ret = this->{{vf.meta|cs.field.name}}.list[i].convto(*tomsg_.add_{{vf.meta|field.name}}());
             if (ret){return __LINE__+ret;}
@@ -72,9 +72,9 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         {{!for vf in vmsg.fields}}
         {{!if vf.meta|field.is_array}}
         this->{{vf.meta|cs.field.name}}.count=0;
-        for (int i = 0;i < frommsg_.{{vf.meta|field.name}}_size() && i < {{vf.meta|field.count}}; ++i,++(this->{{vf.meta|cs.field.name}}.count)){
+        for (size_t i = 0; i < (size_t)frommsg_.{{ vf.meta | field.name }}_size() && i < {{ vf.meta | field.count }}; ++i, ++(this->{{ vf.meta | cs.field.name }}.count)){
             {{!if vf.meta|field.is_msg}}
-            ret = this->{{vf.meta|cs.field.name}}.list[i].convfrom(frommsg_.{{vf.meta|field.name}}());
+            ret = this->{{vf.meta|cs.field.name}}.list[i].convfrom(frommsg_.{{vf.meta|field.name}}(i));
             if (ret) {return __LINE__+ret;}
             {{!elif vf.meta|field.is_bytes}}
             assert(frommsg_.{{vf.meta|field.name}}(i).length() <= {{vf.meta|field.length}});
@@ -83,7 +83,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
             assert(frommsg_.{{ vf.meta | field.name }}(i).length() < {{ vf.meta | field.length }});
             this->{{ vf.meta | cs.field.name }}.list[i].assign(frommsg_.{{ vf.meta | field.name }}(i).data());
             {{!else}}
-            this->{{vf.meta|cs.field.name}}.list[i] = frommsg_.{{vf.meta|field.name}};
+            this->{{vf.meta|cs.field.name}}.list[i] = frommsg_.{{vf.meta|field.name}}(i);
             {{}}
         }
         {{!else}}
@@ -121,7 +121,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         }
         {{}}
         {{}}
-        return 0;
+        return cmp;
     }
     bool    operator == (const {{vmsg.meta|cs.msg.name}} & rhs_) const {
         return this->compare(rhs_) == 0;
