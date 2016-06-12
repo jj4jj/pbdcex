@@ -1,5 +1,6 @@
 #ifndef __PBDCEX_CORE_EX_HPP_XX__
 #define __PBDCEX_CORE_EX_HPP_XX__
+#pragma once
 #include <cstdio>
 #include <cstdarg>
 #include <cstdint>
@@ -9,7 +10,7 @@
 #include <algorithm>
 namespace pbdcex {
 namespace util {
-    uint64_t FNV_1A_Hash64(const unsigned char * data, size_t zdata){
+    static inline uint64_t FNV_1A_Hash64(const unsigned char * data, size_t zdata){
         const uint64_t _FNV_offset_basis = 14695981039346656037ULL;
         const uint64_t _FNV_prime = 1099511628211ULL;
         uint64_t hashv = _FNV_offset_basis;
@@ -30,7 +31,7 @@ namespace util {
         hashv ^= hashv >> 32;
         return (hashv);
     }
-    size_t FNV_1A_Hash32(const unsigned char * data, size_t zdata){
+    static inline size_t FNV_1A_Hash32(const unsigned char * data, size_t zdata){
         const uint32_t _FNV_offset_basis = 2166136261U;
         const uint32_t _FNV_prime = 16777619U;
         uint32_t hashv = _FNV_offset_basis;
