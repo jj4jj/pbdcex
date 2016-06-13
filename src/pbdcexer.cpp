@@ -10,7 +10,8 @@ int main(int argc, const char ** argv){
         "sql_out:r::generate mysql sql create table headers dir;"
         "include:r:I:protobuf include path:.;"
         "proto:r:p:protobuf include proto file;"
-		"message:r:m:convert messsage full type name"
+		"message:r:m:convert messsage full type name;"
+		"template:r:t:a c++ code generator template file"
 		);
 	const char * includes_path[16] = { nullptr };
 	const char * includes_file[16] = { nullptr };
@@ -84,7 +85,7 @@ int main(int argc, const char ** argv){
         cerr << "error init" << endl;
         return -1;
     }
-    int		ret = pbdcex_generate_flat_cpp_header(pbdc, messages[0]);
+    int		ret = pbdcex_generate_flat_cpp_header(pbdc, messages[0], cmdline.getoptstr("template"));
     if(ret){
         std::cerr << "pbdcex convert error ! code : " << ret << std::endl;
     }

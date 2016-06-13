@@ -63,7 +63,7 @@ pbdcex_destroy(pbdcex_t * pdc){
 extern std::stringstream error_stream;
 
 int		
-pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
+pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * tf){
 	auto pool = pdc->proto.GetPool();
 	auto desc = pool->FindMessageTypeByName(msg);
 	if (!desc){
@@ -89,7 +89,7 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg){
         //GLOG_IFO("generating file:%s ", file.c_str());
 		//generater.DumpFile(file.c_str());
         std::string codegen;
-        if (cpph_generate(codegen, desc)){
+        if (cpph_generate(codegen, desc, tf)){
             GLOG_ERR("generate code error !");
             exit(-1);
         }
