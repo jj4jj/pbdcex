@@ -20,6 +20,7 @@ install: src/libpbdcex.a src/pbdcexer
 	mv src/libpbdcex.a lib/
 	mv src/pbdcexer bin/
 	cp -f src/pbdcex.core.hpp include/
+	cp -f src/generater/pbdcex.core.hxx include/
 	cp -f src/meta/extensions.proto include/
 	cp -f src/pbdcex.h include/
 
