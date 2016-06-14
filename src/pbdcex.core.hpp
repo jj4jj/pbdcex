@@ -80,24 +80,54 @@ namespace util {
             return td.hash();
         }
     };
-
-    template<>
-    struct Hash<size_t> {
-        size_t operator ()(const size_t & td) const {
+	template<>
+    struct Hash<int8_t> {
+        size_t operator ()(const int8_t & td) const {
             return td;
         }
     };
-
-
+	template<>
+    struct Hash<uint8_t> {
+        size_t operator ()(const uint8_t & td) const {
+            return td;
+        }
+    };
+ 	template<>
+    struct Hash<int16_t> {
+        size_t operator ()(const int16_t & td) const {
+            return td;
+        }
+    };
+	template<>
+    struct Hash<uint16_t> {
+        size_t operator ()(const uint16_t & td) const {
+            return td;
+        }
+    };
+    template<>
+    struct Hash<int32_t> {
+        size_t operator ()(const int32_t & td) const {
+            return td;
+        }
+    };
+	template<>
+    struct Hash<uint32_t> {
+        size_t operator ()(const uint32_t & td) const {
+            return td;
+        }
+    };
+    template<>
+    struct Hash<float> {
+        size_t operator ()(const double & td) const {
+            return (size_t)td;
+        }
+    };  
     template<>
     struct Hash<double> {
         size_t operator ()(const double & td) const {
             return (size_t)td;
         }
     };
-
-
-
 }
 inline size_t hash_code_merge_multi_value(size_t vs[], size_t n){
     return util::FNV_1A_Hash64((unsigned char*)&vs[0], n*sizeof(size_t));

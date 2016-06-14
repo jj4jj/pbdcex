@@ -7,7 +7,6 @@ test/htest: lib/libpbdcex.a bin/pbdcexer test/test.cpp
 clean:
 	rm -rf include/ lib/ bin/
 	cd src && make clean
-	cd -
 	cd test && make clean
 
 test: install test/htest
