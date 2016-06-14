@@ -2,8 +2,8 @@ src/libpbdcex.a: ./src/pbdcex.cpp ./src/pbdcex.h
 	cd src && make libpbdcex.a
 src/pbdcexer: ./src/pbdcexer.cpp src/libpbdcex.a
 	cd src && make pbdcexer
-test/htest: src/libpbdcex.a src/pbdcexer ./test/test.cpp
-	cd src && make pbdcexer
+test/htest: lib/libpbdcex.a bin/pbdcexer test/test.cpp
+	cd test && make htest
 clean:
 	rm -rf include/ lib/ bin/
 	cd src && make clean

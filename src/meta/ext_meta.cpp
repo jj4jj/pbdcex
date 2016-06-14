@@ -283,9 +283,14 @@ int		EXTProtoMeta::Init(const char * * path, int n, const char ** otherfiles , i
 	}
 	ProtoMetaErrorCollector mfec;
 	importer = new google::protobuf::compiler::Importer(dst, &mfec);
+#if GOOGLE_PROTOBUF_VERSION >= 2006000
     while (otherfiles && m-- > 0){
         importer->AddUnusedImportTrackFile(otherfiles[m]);
     }
+#else
+	m = 0;
+	otherfiles = NULL;
+#endif
 	return 0;
 }
 const google::protobuf::FileDescriptor * EXTProtoMeta::LoadFile(const char * file){
