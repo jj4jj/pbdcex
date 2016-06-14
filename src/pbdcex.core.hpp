@@ -116,9 +116,21 @@ namespace util {
             return td;
         }
     };
+	template<>
+    struct Hash<int64_t> {
+        size_t operator ()(const int64_t & td) const {
+            return td;
+        }
+    };
+	template<>
+    struct Hash<uint64_t> {
+        size_t operator ()(const uint64_t & td) const {
+            return td;
+        }
+    };
     template<>
     struct Hash<float> {
-        size_t operator ()(const double & td) const {
+        size_t operator ()(const float & td) const {
             return (size_t)td;
         }
     };  
