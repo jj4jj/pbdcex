@@ -93,13 +93,16 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * t
             GLOG_ERR("generate code error !");
             exit(-1);
         }
-        std::ofstream ofs(file, ios::out);
-        ofs << codegen ;
-		//GLOG_IFO("generate code file:%s success !", file.c_str());
+		int ret = dcsutil::writefile(file, codegen.data(), codegen.length());
+		if(ret <= 0){
+			GLOG_SER("write code file:%s error ret:%d", file.c_str(), ret);
+			return -3;
+		}
+		GLOG_IFO("generate code file:%s success file sz:%d!", file.c_str(), ret);
 	}
 	catch (exception & e){
 		//GLOG_ERR("generate code error ! for:%s  extra info:", e.what().c_str(), error_stream.str().c_str());
-		return -3;
+		return -4;
 	}
 	return 0;
 }

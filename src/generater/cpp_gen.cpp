@@ -296,6 +296,7 @@ int	CXXFlatMsgGenerater::GetCodeText(std::string & output,const char * tf){
     xctmp_push_filter(xctmp, "unif", [](const string & fn)->std::string{
         std::string ts = fn;
         _strreplace(ts, ".", "_");
+        _strreplace(ts, "/", "_");
         std::transform(ts.begin(), ts.end(),
                 ts.begin(), ::toupper);
         return ts;
