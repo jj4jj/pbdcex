@@ -248,16 +248,13 @@ struct ProtoMetaErrorCollector : google::protobuf::compiler::MultiFileErrorColle
 	const string & filename,
 	int line,
 	int column,
-	const string & message)
-	{
-		error_stream << "file name:" << filename << ":" << line << " error:" << message << endl;
+	const string & message) {
+		std::cerr << "file name:" << filename << ":" << line << " error:" << message << endl;
 	}
 };
 
 EXTProtoMeta::EXTProtoMeta(){
-	dst = new google::protobuf::compiler::DiskSourceTree();
-	dst->MapPath("", "/usr/local/include");
-	dst->MapPath("", "/usr/include");
+    dst = new google::protobuf::compiler::DiskSourceTree();
 	dst->MapPath("", ".");
 	importer = nullptr;
 	dyn_msg_factory = nullptr;
@@ -281,7 +278,10 @@ int		EXTProtoMeta::Init(const char * * path, int n, const char ** otherfiles , i
 		dst->MapPath("", path[n]);
 		//std::clog << "add path:" << path[n] << endl;
 	}
-	ProtoMetaErrorCollector mfec;
+    //dst->MapPath("", "/usr/include");
+    //dst->MapPath("", "/usr/local/include");
+
+	static ProtoMetaErrorCollector mfec;
 	importer = new google::protobuf::compiler::Importer(dst, &mfec);
 #if GOOGLE_PROTOBUF_VERSION >= 2006000
     while (otherfiles && m-- > 0){
@@ -294,13 +294,13 @@ int		EXTProtoMeta::Init(const char * * path, int n, const char ** otherfiles , i
 	return 0;
 }
 const google::protobuf::FileDescriptor * EXTProtoMeta::LoadFile(const char * file){
-	auto ret = importer->Import(file);
-	if (!ret){
+    const FileDescriptor * desc = importer->Import(file);
+    if (!desc){
 		cerr << "error import file:" << file << endl;
 		return nullptr;
 	}
 	dyn_msg_factory = new DynamicMessageFactory(importer->pool());
-	return ret;
+	return desc;
 }
 const google::protobuf::DescriptorPool * EXTProtoMeta::GetPool(){
 	return importer->pool();
