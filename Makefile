@@ -15,11 +15,15 @@ test: install test/htest
 install: src/libpbdcex.a src/pbdcexer
 	mkdir -p bin
 	mkdir -p lib
-	mkdir -p include
+	mkdir -p include/generater
+	mkdir -p include/meta
 	cp -f src/libpbdcex.a lib/
 	cp -f src/pbdcexer bin/
 	cp -f src/pbdcex.core.hpp include/
 	cp -f src/generater/pbdcex.core.hxx include/
 	cp -f src/meta/extensions.proto include/
 	cp -f src/pbdcex.h include/
+	cp -f src/meta/ext_meta.h include/meta/
+	cp -f src/generater/cpp_gen.h include/generater/
+	cp -f src/generater/mysql_gen.h include/generater/
 
