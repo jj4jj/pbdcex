@@ -6,13 +6,14 @@ using namespace std;
 
 int main(int argc, const char ** argv){
 	cmdline_opt_t	cmdline(argc, argv);
-	cmdline.parse("cpp_out:r::generate cpp headers dir;"
+    cmdline.parse("cpp_out:r::generate cpp headers dir;"
         "sql_out:r::generate mysql sql create table headers dir;"
         "include:r:I:protobuf include path:.;"
         "proto:r:p:protobuf include proto file;"
-		"message:r:m:convert messsage full type name;"
-		"template:r:t:a c++ code generator template file"
-		);
+        "message:r:m:convert messsage full type name;"
+        "template:r:t:a c++ code generator template file;"
+        "sql-flat:n::generate sql statement with flat mode;"
+        );
 	const char * includes_path[16] = { nullptr };
 	const char * includes_file[16] = { nullptr };
 	const char * messages[64] = { nullptr };
@@ -76,8 +77,11 @@ int main(int argc, const char ** argv){
 	}
 	if (sql_out){
         config.sql.flat_mode = false;
+        if (cmdline.hasopt("sql-flat")){
+            config.sql.flat_mode = true;
+        }
         config.sql.out_path = sql_out;
-        //std::cout << "generating sql scripts to :" << sql_out <<" ..."<< endl;
+        std::cout << "generating sql scripts to :" << sql_out <<" ..."<< endl;
 	}
 
     pbdcex_t * pbdc =  pbdcex_create(config);
@@ -85,12 +89,25 @@ int main(int argc, const char ** argv){
         cerr << "error init" << endl;
         return -1;
     }
-    int		ret = pbdcex_generate_flat_cpp_header(pbdc, messages[0], cmdline.getoptstr("template"));
-    if(ret){
-        std::cerr << "pbdcex convert error ! code : " << ret << std::endl;
+    if (cpp_out){
+        int		ret = pbdcex_generate_flat_cpp_header(pbdc, messages[0], cmdline.getoptstr("template"));
+        if (ret){
+            std::cerr << "pbdcex convert error ! code : " << ret << std::endl;
+        }
+        else {
+            std::cout << "message generating success !" << endl;
+        }
     }
-    else {
-        std::cout << "message generating success !" << endl;
+    if (sql_out){
+        for (int i = 0; i < nmsg; ++i){
+            int		ret = pbdcex_generate_mysql_create(pbdc, messages[i]);
+            if (ret){
+                std::cerr << "pbdcex convert sql for msg:" << messages[i] << " error ! code : " << ret << std::endl;
+            }
+            else {
+                std::cout << "message [" << messages[i] << "] generated success !" << endl;
+            }
+        }
     }
     pbdcex_destroy(pbdc);
 	return 0;

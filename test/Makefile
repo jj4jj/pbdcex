@@ -9,3 +9,9 @@ proto/test.pb.h: proto/test.proto ../include/extensions.proto
 
 proto/test.cex.hpp: proto/test.proto
 	../bin/pbdcexer -pproto/test.proto -mHello --cpp_out=. ${protoi} -I../include -Iproto
+
+
+sql:
+	../bin/pbdcexer -pproto/test.proto -mDBPlayer -mDBHello --sql_out=. -I/usr/local/include -I../include -Iproto --sql-flat
+	../bin/pbdcexer -pproto/test.proto -mDBPlayer --sql_out=. -I/usr/local/include -I../include -Iproto
+	../bin/pbdcexer -pproto/test.proto -mDBPlayer --sql_out=. -I/usr/local/include -I../include -Iproto

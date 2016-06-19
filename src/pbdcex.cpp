@@ -49,6 +49,13 @@ pbdcex_create(const pbdcex_config_t & conf){
 		return nullptr;
 	}
 	pdc->sql_cvt = new MySQLMsgCvt(pdc->conf.meta.files[0], nullptr);
+    //int InitMeta(int n = 0, const char ** path = nullptr, int m = 0, const char ** otherfiles = nullptr);
+    if (pdc->sql_cvt->InitMeta(conf.meta.paths.size(), (const char **)paths, conf.meta.files.size()-1, (const char **)(files + 1))){
+        GLOG_ERR("mysql converter init error !");
+        return nullptr;
+    }
+
+
 	return pdc;
 }
 void
@@ -98,7 +105,7 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * t
 			GLOG_SER("write code file:%s error ret:%d", file.c_str(), ret);
 			return -3;
 		}
-		GLOG_IFO("generate code file:%s success file sz:%d!", file.c_str(), ret);
+		//GLOG_IFO("generate code file:%s success file sz:%d!", file.c_str(), ret);
 	}
 	catch (exception & e){
 		//GLOG_ERR("generate code error ! for:%s  extra info:", e.what().c_str(), error_stream.str().c_str());
@@ -135,11 +142,17 @@ pbdcex_generate_mysql_create(pbdcex_t * pdc, const char * msg){
 	string outfile = pdc->conf.sql.out_path;
 	outfile += "/";
 	outfile += msg;
+    if (pdc->conf.sql.flat_mode){
+        outfile += ".flat";
+    }
 	outfile += ".sql";
-	return dcsutil::writefile(outfile, sql.data(), sql.length());
+	dcsutil::writefile(outfile, sql.data(), sql.length());
+    return 0;
 }
+#if 0
 int		
 pbdcex_generate_mysql_alter(pbdcex_t *, const char * msg, int oldtag){
 #warning "todo";
 	return -1;
 }
+#endif

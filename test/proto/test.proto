@@ -62,3 +62,18 @@ message DBHello {
     repeated Award repeat_msg = 9[(f_count)="5"];
     optional EnumDef_value   ev = 10;
 }
+message DBPlayer {
+	option(m_pks) = "id";
+	option(m_divkey) = "id";
+	option(m_divnum) = 100;
+	required uint64 id = 1;
+	optional string name = 4[(f_length)="32"];
+	optional Hello	base = 12;
+	optional Hello	ext = 13;
+	optional Hello	bag = 5;
+	optional Hello	pets  = 6;
+	optional Hello	task  = 7;
+	optional Hello	sns = 8;
+	optional Hello	activity  = 9;
+	optional Hello	misc = 10;
+}
