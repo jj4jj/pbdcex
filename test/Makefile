@@ -13,5 +13,5 @@ proto/test.cex.hpp: proto/test.proto
 
 sql:
 	../bin/pbdcexer -pproto/test.proto -mDBPlayer -mDBHello --sql_out=. -I/usr/local/include -I../include -Iproto --sql-flat
-	../bin/pbdcexer -pproto/test.proto -mDBPlayer --sql_out=. -I/usr/local/include -I../include -Iproto
+	../bin/pbdcexer -pproto/test.proto -mHello --sql_out=. -I/usr/local/include -I../include -Iproto
 	../bin/pbdcexer -pproto/test.proto -mDBPlayer --sql_out=. -I/usr/local/include -I../include -Iproto
