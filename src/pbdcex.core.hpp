@@ -146,7 +146,7 @@ inline size_t hash_code_merge_multi_value(size_t vs[], size_t n){
 }
 template<class T, class P>
 struct serializable_t {
-    int dumps(std::string & str) const {
+    int dumps(::std::string & str) const {
         P pm;
         int ret = reinterpret_cast<const T*>(this)->convto(pm);
         if (ret){
@@ -157,7 +157,7 @@ struct serializable_t {
         }
         return 0;
     }
-    int  loads(const std::string & str){
+    int  loads(const ::std::string & str){
         P pm;
         if (!pm.ParseFromString(str)){
             return -1;
@@ -179,7 +179,7 @@ struct serializable_t {
         }
         return 0;
     }
-    const char * debugs(std::string & str) const {
+    const char * debugs(::std::string & str) const {
         P pm;
         reinterpret_cast<const T*>(this)->convto(pm);
         str = pm.ShortDebugString();
@@ -217,7 +217,7 @@ struct string_t {
         data[l]=0;
         return l;
     }
-    int assign(const std::string & s){
+    int assign(const ::std::string & s){
         return this->assign(s.data());
     }
     int clone(char * s, int len) const {
@@ -239,6 +239,9 @@ struct string_t {
     }
     bool operator < (const string_t & rhs) const {
         return compare(rhs) < 0;
+    }
+	bool operator > (const string_t & rhs) const {
+        return compare(rhs) > 0;
     }
     int     compare(const string_t & rhs) const {
         return strcmp(data, rhs.data);
@@ -262,7 +265,7 @@ struct bytes_t {
         memcpy(data, s, l);
         return l;
     }
-    LengthT assign(const std::string & s){
+    LengthT assign(const ::std::string & s){
         return this->assign(s.data(), s.length());
     }
     LengthT clone(char * s, int len) const {
@@ -275,6 +278,9 @@ struct bytes_t {
     }
     bool operator < (const bytes_t & rhs) const {
         return compare(rhs) < 0;
+    }
+	bool operator > (const bytes_t & rhs) const {
+        return compare(rhs) > 0;
     }
     int     compare(const bytes_t & rhs) const {
         if (length < rhs.length){
@@ -413,7 +419,7 @@ struct array_t {
     }
     void lsort(array_t & out) const {
         memcpy(&out, this, sizeof(*this));
-        std::sort(out.list, out.list + out.count);
+        ::std::sort(out.list, out.list + out.count);
     }
     //////////////////////////////////////////////////////////
     /////////////////////binary-seaching//////////////////////
@@ -441,11 +447,11 @@ struct array_t {
         return lremove(idx, false);
     }
     int lower_bound(const T & tk) const {
-        const T * p = std::lower_bound((T*)list, (T*)list + count, (T&)tk);
+        const T * p = ::std::lower_bound((T*)list, (T*)list + count, (T&)tk);
         return (p - list);
     }
     int upper_bound(const T & tk) const {
-        const T * p = std::upper_bound((T*)list, (T*)list + count, (T&)tk);
+        const T * p = ::std::upper_bound((T*)list, (T*)list + count, (T&)tk);
         return (p - list);
     }
     T & operator [](size_t idx){
@@ -616,23 +622,23 @@ struct hashtable_t {
     int         collision() const {
         return stat_probe_insert / stat_insert;
     }
-    const char * layers(std::string & str) const {
+    const char * layers(::std::string & str) const {
         for (int i = 0; i < layer; ++i){
             str.append("[" +
-                std::to_string(this->hash_layer_segment[i].offset) + "," +
-                std::to_string(this->hash_layer_segment[i].count) + ")");
+                ::std::to_string(this->hash_layer_segment[i].offset) + "," +
+                ::std::to_string(this->hash_layer_segment[i].count) + ")");
         }
         return str.c_str();
     }
-    const char * stat(std::string & str){
-        str += "mbytes size:" + std::to_string(sizeof(*this)) +
-            " mused:" + std::to_string(this->mmpool().used()) +"/"+std::to_string(cmax) +
-            " musage:" + std::to_string(this->mmpool().used() / cmax) +
-            " iload:" + std::to_string(this->load()) +
-            " ihit:" + std::to_string(this->hit()) +
-            " ifactor:" + std::to_string(this->factor()) +
-            " icollision:" + std::to_string(this->collision()) +
-            " ilayers:";
+    const char * stat(::std::string & str){
+        str += "mbytes size:" + ::std::to_string(sizeof(*this)) +
+            " mused:" + ::std::to_string(this->mmpool().used()) +"/"+::std::to_string(cmax) +
+            " musage:" + ::std::to_string(this->mmpool().used() / cmax) +
+            " iload:" + ::std::to_string(this->load()) +
+            " ihit:" + ::std::to_string(this->hit()) +
+            " ifactor:" + ::std::to_string(this->factor()) +
+            " icollision:" + ::std::to_string(this->collision()) +
+            " ilayers:" + ::std::to_string(layer);
         return this->layers(str);
     }
     bool        empty() const {

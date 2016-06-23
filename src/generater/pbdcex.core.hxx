@@ -5,11 +5,11 @@
 //Please do NOT edit it ! Any bug please let jj4jj known .
 //File generated time: {{time}}
 
-{{ns_begin}}
 {{!for vd in depencies}}
 #include "{{vd}}"
 {{}}
 #include "pbdcex.core.hpp"
+{{ns_begin}}
 using pbdcex::string_t;
 using pbdcex::bytes_t;
 using pbdcex::array_t;
