@@ -292,7 +292,7 @@ struct bytes_t {
     }
 };
 
-template<class T, size_t cmax, class LengthT=unsigned int>
+template<class T, size_t cmax, class LengthT=size_t>
 struct array_t {
     T           list[cmax];
     LengthT     count;
