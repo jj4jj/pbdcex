@@ -142,6 +142,7 @@ namespace util {
     };
 }
 inline size_t hash_code_merge_multi_value(size_t vs[], size_t n){
+    //64bytes optimal todo
     return util::FNV_1A_Hash64((unsigned char*)&vs[0], n*sizeof(size_t));
 }
 template<class T, class P>
@@ -152,7 +153,7 @@ struct serializable_t {
         if (ret){
             return ret;
         }
-        if (!pm.SerializeToString(str)){
+        if (!pm.SerializeToString(&str)) {
             return -1;
         }
         return 0;
@@ -219,6 +220,14 @@ struct string_t {
     }
     int assign(const ::std::string & s){
         return this->assign(s.data());
+    }
+    string_t & operator = (const char * s) {
+        this->assign(s);
+        return *this;
+    }
+    string_t & operator = (const ::std::string & str) {
+        this->assign(str);
+        return *this;
     }
     int clone(char * s, int len) const {
         if (!s){ return 0; }
@@ -292,7 +301,7 @@ struct bytes_t {
     }
 };
 
-template<class T, size_t cmax, class LengthT=size_t>
+template<class T, size_t cmax, class LengthT=uint32_t>
 struct array_t {
     T           list[cmax];
     LengthT     count;
@@ -311,7 +320,7 @@ struct array_t {
             hvl = 5;
             gap = this->count / 5U;
         }
-        for (size_t i = 0; i < this->count; i += gap){
+        for (LengthT i = 0; i < this->count; i += gap) {
             hvs[i] = hf(this->list[i]);
         }
         return util::FNV_1A_Hash64((unsigned char *)hvs, hvl*sizeof(size_t));
@@ -322,11 +331,23 @@ struct array_t {
     size_t capacity() const {
         return cmax;
     }
+    bool   full() const {
+        return this->count >= cmax;
+    }
+    bool   empty() const {
+        return this->count == 0;
+    }
+    void   clear() {
+        this->count = 0;
+    }
     bool operator == (const array_t & rhs) const {
         return compare(rhs) == 0;
     }
     bool operator < (const array_t & rhs) const {
         return compare(rhs) < 0;
+    }
+    bool operator > (const array_t & rhs) const {
+        return compare(rhs) > 0;
     }
     int  compare(const array_t & rhs) const {
         if (count < rhs.count){
@@ -354,7 +375,7 @@ struct array_t {
     ////////////////////////////////////////////////////
     //linear list///////////////////////////////////////
     int lfind(const T & tk) const {
-        for (size_t i = 0; i < count && i < cmax; ++i){
+        for (LengthT i = 0; i < count && i < cmax; ++i){
             if (list[i] == tk){
                 return i;
             }
@@ -437,20 +458,25 @@ struct array_t {
         }
         return -1;
     }
-    int binsert(const T & td){
-        int idx = lower_bound(td);
-        return linsert(idx, td, false);
+    int binsert(const T & td, bool overflow_shift = false, bool uniq = false) {
+        LengthT idx = lower_bound(td);
+        if (uniq && idx < count) {
+            if (list[idx] == td) {
+                return -1;
+            }
+        }
+        return linsert(idx, td, overflow_shift);
     }
     int bremove(const T & tk){
         int idx = bfind(tk);
         if (idx < 0){ return -1;}
         return lremove(idx, false);
     }
-    int lower_bound(const T & tk) const {
+    LengthT lower_bound(const T & tk) const {
         const T * p = ::std::lower_bound((T*)list, (T*)list + count, (T&)tk);
         return (p - list);
     }
-    int upper_bound(const T & tk) const {
+    LengthT upper_bound(const T & tk) const {
         const T * p = ::std::upper_bound((T*)list, (T*)list + count, (T&)tk);
         return (p - list);
     }
@@ -478,9 +504,6 @@ struct mmpool_t {
     void   construct(){
         memset(this, 0, sizeof(*this));
         allocator_.count = cmax;
-        for (size_t i = 0; i < mmpool_bit_block_count; ++i){
-            bmp_[i] = 0xFFFFFFFFFFFFFFFFULL;//all set 1
-        }
         used_ = 0;
     }
     const allocator_t & allocator() {
@@ -491,15 +514,14 @@ struct mmpool_t {
             return 0; //full
         }
         //1.find first 0 set 1
-        size_t x = 0;
-        size_t i = 0;
-        for (; i < mmpool_bit_block_count; ++i){
-            if((x = __builtin_ffsll(bmp_[i]))){
+        size_t x,i;
+        for (i = 0, x = 0; i < mmpool_bit_block_count; ++i){
+            if((x = __builtin_ffsll(~(bmp_[i])))){
                 break;
             }
         }
         if(x != 0){
-            bmp_[i] &= (~(1ULL<<(x-1)));//set 0
+            bmp_[i] |= (1ULL<<(x-1));//set 1
             size_t id=i*mmpool_bit_block_bit_sz+x;
             ++used_;
             new (&(allocator_.list[id - 1]))T();
@@ -508,7 +530,6 @@ struct mmpool_t {
         else {
             return 0;
         }
-
     }
     size_t id(const T * p) const {
         assert(p >= allocator_.list && p < allocator_.list + cmax);
@@ -516,7 +537,7 @@ struct mmpool_t {
     }
     T * ptr(size_t id) {
         if(id > 0 && id <= capacity() && isbusy(id)){
-           return &allocator_.list[id-1];
+           return &(allocator_.list[id-1]);
         }
         else {
             return NULL;
@@ -525,7 +546,7 @@ struct mmpool_t {
     bool isbusy(size_t id){
         assert(id > 0);
         size_t idx=id-1;
-        return !(bmp_[idx/mmpool_bit_block_bit_sz]&(1ULL<<(idx%mmpool_bit_block_bit_sz)));
+        return bmp_[idx/mmpool_bit_block_bit_sz]&(1ULL<<(idx%mmpool_bit_block_bit_sz));
     }
     size_t capacity() const {
         return cmax;
@@ -540,14 +561,21 @@ struct mmpool_t {
         if (used_ == 0){
             return 0;
         }
-        it = it + 1;
-        for (size_t i = (it - 1) / mmpool_bit_block_bit_sz; i < sizeof(bmp_)/sizeof(bmp_[0]); ++i){
-            if(bmp_[i] != 0xFFFFFFFFFFFFFFFFULL){
-                for (int j = (it - 1) % mmpool_bit_block_bit_sz; j < mmpool_bit_block_bit_sz; ++j){
-                    if ((bmp_[i] & (1ULL << j)) == 0){//find first 0
-                       return i*mmpool_bit_block_bit_sz + j + 1;
-                   }
-               }
+        bool head = true; //(it+1)-1 = idx
+        uint32_t pos_bit_ffs = 0;
+        for (size_t idx = it / mmpool_bit_block_bit_sz, pos_bit_offset = it % mmpool_bit_block_bit_sz;
+            idx < sizeof(bmp_) / sizeof(bmp_[0]); ++idx) {
+            if (!head) {
+                pos_bit_offset = 0;
+            }
+            else {
+                head = false;
+            }
+            if (bmp_[idx] != 0ULL) {
+                pos_bit_ffs = __builtin_ffsll(bmp_[idx] >> pos_bit_offset);
+                if (pos_bit_ffs > 0) {
+                    return idx*mmpool_bit_block_bit_sz + pos_bit_offset + pos_bit_ffs;
+                }
             }
         }
         return 0;
@@ -555,10 +583,10 @@ struct mmpool_t {
     void   free(size_t id){
         assert(id > 0);
         size_t idx = id - 1;
-        if(isbusy(id)){ //set 1
-            bmp_[idx / mmpool_bit_block_bit_sz] |= (1ULL << (idx%mmpool_bit_block_bit_sz));
-            allocator_.list[idx].~T();
+        if(isbusy(id)){ //set 0
+            bmp_[idx / mmpool_bit_block_bit_sz] &= (~(1ULL << (idx%mmpool_bit_block_bit_sz)));
             --used_;
+            allocator_.list[idx].~T();
         }
     }
 };

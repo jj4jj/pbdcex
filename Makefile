@@ -17,8 +17,8 @@ install: src/libpbdcex.a src/pbdcexer
 	mkdir -p lib
 	mkdir -p include/generater
 	mkdir -p include/meta
-	cp -f src/libpbdcex.a lib/
-	cp -f src/pbdcexer bin/
+	mv  src/libpbdcex.a lib/
+	mv  src/pbdcexer bin/
 	cp -f src/pbdcex.core.hpp include/
 	cp -f src/generater/pbdcex.core.hxx include/
 	cp -f src/meta/extensions.proto include/
