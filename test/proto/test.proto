@@ -34,7 +34,7 @@ message Hello {
     optional EnumDef_value   ev = 10;
     optional string teststr = 11[(f_length)="25"];
     optional bytes  testbs = 12[(f_length)="24"];
-	optional int32 xxx1 =  19;
+	required int32 xxx1 =  19;
 	optional int32 xxx2 =  20;
 	optional int32 xxx3 =  21;
 	optional int32 xxx4 =  22;

@@ -105,59 +105,69 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 	void     diff(const {{ vmsg.meta | cs.msg.name }} & orgv , {{ vmsg.meta | msg.name }} & updates, {{ vmsg.meta | msg.name }} & removes) const {
 		updates.Clear();
 		removes.Clear();
-		{{!for vf in vmsg.pkfields}}
+		{{!for vf in vmsg.fields}}
 		{{!if vf.meta | field.is_array }}
-		{
+		{//block of checking array differ
 			decltype(this->{{vf.meta | cs.field.name}}.count) i = 0, j = 0;
-			while(i < this->{{vf.meta | cs.field.name}}.count || j < orgv.{{vf.meta | cs.field.name}}.count){
-				if((i < this->{{vf.meta | cs.field.name}}.count) && (j < orgv.{{vf.meta | cs.field.name}}.count) &&
-				   (this->{{vf.meta | cs.field.name}}.list[i] == orgv.{{vf.meta | cs.field.name}}.list[j])){
-					auto upd = updates.mutable_{{ vf.meta | field.name }}()->Add();
-					{{!if vf.meta | field.is_msg }}						
-					auto rem = updates.mutable_{{ vf.meta | field.name }}()->Add();
-					this->{{vf.meta | cs.field.name}}.list[i].diff(this->{{vf.meta | cs.field.name}}.list[j],*upd,*rem);
-					{{!elif vf.meta | field.is_string }}
-					*upd = this->{{vf.meta | cs.field.name}}.list[i].data;
-					{{!elif vf.meta | field.is_bytes }}
-					upd->assign((const char*)this->{{vf.meta | cs.field.name}}.list[i].data, this->{{vf.meta | cs.field.name}}.list[i].length);
-					{{!else}}
-					*upd = this->{{vf.meta | cs.field.name}}.list[i];
-					{{}}
-					++i; ++j;
-					continue;
+			for (i = 0;i < this->{{vf.meta | cs.field.name}}.count; ++i) {
+				bool found = false;
+				for (j = 0; j < orgv.{{vf.meta | cs.field.name}}.count; ++j) {
+					if (this->{{vf.meta | cs.field.name}}.list[i] == orgv.{{vf.meta | cs.field.name}}.list[j]) {
+						{{!if vf.meta | field.is_msg }}
+						auto upd = updates.mutable_{{vf.meta | field.name}}()->Add();
+						auto rem = updates.mutable_{{vf.meta | field.name}}()->Add();
+						this->{{vf.meta | cs.field.name}}.list[i].diff(orgv.{{vf.meta | cs.field.name}}.list[j], *upd, *rem);
+						{{}}
+						found = true;
+						break;
+					}
 				}
-				if (i < this->{{vf.meta | cs.field.name}}.count) {
-					auto upd = updates.mutable_{{ vf.meta | field.name }}()->Add();
+				if (!found) {
+					auto upd = updates.mutable_{{vf.meta | cs.field.name}}()->Add();
 					{{!if vf.meta | field.is_msg }}
 					this->{{vf.meta | cs.field.name}}.list[i].convto(*upd);
 					{{!elif vf.meta | field.is_string }}
-					*upd = this->{{vf.meta | cs.field.name}}.list[i].data;
+					upd->assign(this->{{vf.meta | cs.field.name}}.list[i].data);
 					{{!elif vf.meta | field.is_bytes }}
 					upd->assign((const char*)this->{{vf.meta | cs.field.name}}.list[i].data, this->{{vf.meta | cs.field.name}}.list[i].length);
 					{{!else}}
 					*upd = this->{{vf.meta | cs.field.name}}.list[i];
 					{{}}
-					++i;
-					continue;
 				}
-				if (j < orgv.{{ vf.meta | cs.field.name }}.count){
-					auto rem = removes.mutable_{{ vf.meta | field.name }}()->Add();
+			}
+			for (j = 0; j < orgv.{{vf.meta | cs.field.name}}.count; ++j) {
+				bool found = false;
+				for (i = 0;i < this->{{vf.meta | cs.field.name}}.count; ++i) {
+					if (this->{{vf.meta | cs.field.name}}.list[i] == orgv.{{vf.meta | cs.field.name}}.list[j]) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					auto rem = removes.mutable_{{vf.meta | cs.field.name}}()->Add();
 					{{!if vf.meta | field.is_msg }}
-					this->{{vf.meta | cs.field.name}}.list[i].convto(*rem);
+					orgv.{{vf.meta | cs.field.name}}.list[j].convto(*rem);
 					{{!elif vf.meta | field.is_string }}
-					*rem = this->{{vf.meta | cs.field.name}}.list[j].data;
+					rem->assign(orgv.{{vf.meta | cs.field.name}}.list[j].data);
 					{{!elif vf.meta | field.is_bytes }}
-					rem->assign((const char*)this->{{vf.meta | cs.field.name}}.list[j].data, this->{{vf.meta | cs.field.name}}.list[j].length);
+					rem->assign((const char*)orgv.{{vf.meta | cs.field.name}}.list[j].data, this->{{vf.meta | cs.field.name}}.list[j].length);
 					{{!else}}
 					*rem = this->{{vf.meta | cs.field.name}}.list[j];
 					{{}}
-					++j;
-					continue;
-				}
-			}
-		}
+				}//end if
+			}//end with for checking remove
+		}//end with array diff block 
 		{{!elif vf.meta | field.is_msg}}
 		this->{{vf.meta | cs.field.name}}.diff(orgv.{{vf.meta | cs.field.name}}, *updates.mutable_{{ vf.meta | cs.field.name }}(), *removes.mutable_{{ vf.meta | cs.field.name }}());
+		{{!else}}
+		{{!if vf.meta | field.is_required}}
+		{{!if vf.meta | field.is_string }}
+		updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }}.data);
+		{{!elif vf.meta | field.is_bytes}}
+		updates.set_{{ vf.meta | field.name }}((char*)this->{{ vf.meta | cs.field.name }}.data, this->{{ vf.meta | cs.field.name }}.length);
+		{{!else}}
+		updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }});
+		{{}}
 		{{!else}}
 		if (!(this->{{vf.meta | cs.field.name}} == orgv.{{vf.meta | cs.field.name}})) {
 			{{!if vf.meta | field.is_string }}
@@ -168,6 +178,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 			updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }});
 			{{}}
 		}
+		{{}}
 		{{}}
 		{{}}
 	}

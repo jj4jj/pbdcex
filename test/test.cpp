@@ -61,7 +61,9 @@ int main(){
     while ((it = pool.next(it))){
         ++count;
     }
-    printf("traverse count:%d\n", count);    
+    printf("traverse count:%d\n", count); 
+	
+	printf("sizeof(Hello_ST):%zu\n", sizeof(Hello_ST));
 
     struct hc {
         size_t operator() (const Hello_ST & h){
@@ -72,9 +74,8 @@ int main(){
     hash.construct();
     std::string dstr;
     printf("%s\n", hash.stat(dstr));
-	#if 0
     for (int i = 0; i < 10000; ++i){
-        Hello_ST h1;
+        static Hello_ST h1;
         h1.id = rand()%1000;
         auto p = hash.insert(h1);
         if (p && rand() % 100 < 90){
@@ -90,7 +91,6 @@ int main(){
 
     dstr.clear();
     printf("after insert %s\n", hash.stat(dstr));
-	#endif
 
 
 	static Hello_ST	hst1,hst2;
@@ -115,6 +115,8 @@ int main(){
 	hds.b.a.f1 = 99;
 	hst1.testadss.lappend(hds);
 
+	//remove 10,30
+	//add 99
 	Hello upd,rem;	
 	timeval tv;
 	gettimeofday(&tv, 0);
@@ -123,7 +125,10 @@ int main(){
 	}
 	timeval tv2;
 	gettimeofday(&tv2, 0);
-	printf("hst2.diff(hst1) 100000 times:%ld.%ld updates(add or replace):\n%s\nremoves:\n%s\n",
+	hst2.diff(hst1, upd, rem);
+	std::string ds1,ds2;
+	printf("hst2(\n[%s]\n).diff(hst1)\n[%s]\n 100000 times:%ld.%ld updates(add or replace):\n[%s]\nremoves:\n[%s]\n",
+		hst2.debugs(ds1),hst1.debugs(ds2),
 		tv2.tv_sec - tv.tv_sec, tv2.tv_usec - tv.tv_usec,
 	upd.ShortDebugString().c_str(), rem.ShortDebugString().c_str());
 
