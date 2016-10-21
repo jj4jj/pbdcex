@@ -2,7 +2,7 @@ XCTEMP=../../cxxtemplates
 DCPOTS=../../dcpots
 INCLUDE=../../
 pbdcexer: pbdcexer.cpp libpbdcex.a ${XCTEMP}/lib/libxctmp.a
-	g++ -o $@ $^ meta/extensions.pb.cc -std=c++11 -L${DCPOTS}/lib -ldcbase -I${INCLUDE} ${protoi} -static ${protol} -pthread -ldl -g3
+	g++ -o $@ $^ meta/extensions.pb.cc -std=c++11 -L${DCPOTS}/lib -ldcbase -I${INCLUDE} ${protoi}  ${protol} -pthread -ldl -g3
 
 clean:
 	rm -f pbdcexer

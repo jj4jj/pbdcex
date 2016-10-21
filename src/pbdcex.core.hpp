@@ -263,7 +263,7 @@ struct bytes_t {
     LengthT         length;
     //////////////////////////////////////////////////////
     size_t hash() const { //fnv
-        return FNV_1A_Hash64(data, length);
+        return util::FNV_1A_Hash64(data, length);
     }
     void  construct(){
         this->data[0] = 0;
@@ -372,7 +372,6 @@ struct array_t {
         }
         return (int)(count - rhs.count);
     }
-    ////////////////////////////////////////////////////
     //linear list///////////////////////////////////////
     int lfind(const T & tk) const {
         for (LengthT i = 0; i < count && i < cmax; ++i){

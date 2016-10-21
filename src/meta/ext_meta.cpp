@@ -9,6 +9,42 @@ using namespace google::protobuf;
 
 #define DIM_ARRAY(a)	(sizeof((a))/sizeof((a)[0]))
 
+static inline std::string &       strltrim(std::string & str, const char * charset) {
+	if (str.empty() || !charset || !*charset) {
+		return str;
+	}
+	for (size_t i = 0; i < str.length(); ++i) {
+		if (!strchr(charset, str[i])) {
+			if (i > 0) {
+				str.erase(0, i);
+			}
+			return str;
+		}
+	}
+	return str;
+}
+static inline std::string &       strrtrim(std::string & str, const char * charset) {
+	if (str.empty() || !charset || !*charset) {
+		return str;
+	}
+	for (size_t i = str.length() - 1; ((long int)i) >= 0; --i) {
+		if (!strchr(charset, str[i])) {
+			if (i > 0) {
+				str.erase(i, str.length() - i);
+			}
+			return str;
+		}
+	}
+	return str;
+}
+static inline std::string &       strtrim(std::string & str, const char * charset) {
+	if (str.empty() || !charset || !*charset) {
+		return str;
+	}
+	strltrim(str, charset);
+	return strrtrim(str, charset);
+}
+
 template<class D>
 static inline string descriptor_option(D desc, const string & opt);
 template<>
@@ -221,6 +257,7 @@ int		EXTMessageMeta::ParsePKS(){
 				f_field_name = m_pks.substr(bpos);
 			}
 		}
+		strtrim(f_field_name," \t\n");
 		pks_name.push_back(f_field_name);
 		for (auto & suf : sub_fields){
 			if (suf.field_desc->name() == f_field_name){

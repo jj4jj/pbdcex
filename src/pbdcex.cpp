@@ -11,7 +11,7 @@
 
 using namespace google::protobuf;
 using namespace google::protobuf::compiler;
-using namespace dcsutil;
+using namespace dcs;
 struct pbdcex_t {
 	pbdcex_config_t	conf;
 	EXTProtoMeta	proto;
@@ -100,7 +100,7 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * t
             GLOG_ERR("generate code error !");
             exit(-1);
         }
-		int ret = dcsutil::writefile(file, codegen.data(), codegen.length());
+		int ret = dcs::writefile(file, codegen.data(), codegen.length());
 		if(ret <= 0){
 			GLOG_SER("write code file:%s error ret:%d", file.c_str(), ret);
 			return -3;
@@ -146,7 +146,7 @@ pbdcex_generate_mysql_create(pbdcex_t * pdc, const char * msg){
         outfile += ".flat";
     }
 	outfile += ".sql";
-	dcsutil::writefile(outfile, sql.data(), sql.length());
+	dcs::writefile(outfile, sql.data(), sql.length());
     return 0;
 }
 #if 0
