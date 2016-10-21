@@ -426,7 +426,8 @@ struct array_t {
             return lappend(td, overflow_shift);
         }
         //--overlay------idx------>-----idx+1------------------------------
-        if (count >= cmax){
+		assert(count <= cmax);
+        if (count == cmax){
             memmove(list + idx + 1, list + idx, (cmax - 1 - idx)*sizeof(T));
             list[idx] = td;
         }

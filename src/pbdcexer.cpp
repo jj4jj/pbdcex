@@ -81,7 +81,7 @@ int main(int argc, const char ** argv){
             config.sql.flat_mode = true;
         }
         config.sql.out_path = sql_out;
-        std::cout << "generating sql scripts to :" << sql_out <<" ..."<< endl;
+        std::cout << "generating sql scripts to [" << sql_out <<"] ..."<< endl;
 	}
 
     pbdcex_t * pbdc =  pbdcex_create(config);

@@ -2,6 +2,8 @@
 #include "test.pb.h"
 #include "test.cex.hpp"
 #include <iostream>
+#include "time.h"
+#include "sys/time.h"
 
 int main(){
     Hello_ST hs;
@@ -70,6 +72,7 @@ int main(){
     hash.construct();
     std::string dstr;
     printf("%s\n", hash.stat(dstr));
+	#if 0
     for (int i = 0; i < 10000; ++i){
         Hello_ST h1;
         h1.id = rand()%1000;
@@ -87,5 +90,43 @@ int main(){
 
     dstr.clear();
     printf("after insert %s\n", hash.stat(dstr));
+	#endif
+
+
+	static Hello_ST	hst1,hst2;
+	hst1.construct();
+	static HelloD_ST hds;
+	hds.b.a.f1 = 10;
+	hst1.testadss.lappend(hds);
+	hds.b.a.f1 = 24;
+	hst1.testadss.lappend(hds);
+	hds.b.a.f1 = 25;
+	hst1.testadss.lappend(hds);
+	hds.b.a.f1 = 30;
+	hst1.testadss.lappend(hds);
+
+	hst2 = hst1;
+	hst2.xx9.b.a.f1 = 2200;
+	hst2.xxx1 = 1200;
+	hst2.d.f1 = 1990;
+	hst2.id = 2020;
+	hst2.testadss.lremove(0);
+	hst2.testadss.lremove(3);
+	hds.b.a.f1 = 99;
+	hst1.testadss.lappend(hds);
+
+	Hello upd,rem;	
+	timeval tv;
+	gettimeofday(&tv, 0);
+	for (int i = 0;i < 10000; ++i) {
+		hst2.diff(hst1, upd, rem);
+	}
+	timeval tv2;
+	gettimeofday(&tv2, 0);
+	printf("hst2.diff(hst1) 100000 times:%ld.%ld updates(add or replace):\n%s\nremoves:\n%s\n",
+		tv2.tv_sec - tv.tv_sec, tv2.tv_usec - tv.tv_usec,
+	upd.ShortDebugString().c_str(), rem.ShortDebugString().c_str());
+
+
     return 0;
 }

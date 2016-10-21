@@ -24,7 +24,7 @@ message Hello {
     option(m_cn)="ssss";
     option(m_desc)="hello, world";
     option(m_relchk)="";
-    option(m_pks)="id,myworld";
+    option(m_pks)=" id , myworld ";
 
     optional int32 id = 1[(f_cn)="id",(f_desc)="id"];
     repeated string myworld = 2[(f_length)="32",(f_count)="32"];
@@ -34,6 +34,16 @@ message Hello {
     optional EnumDef_value   ev = 10;
     optional string teststr = 11[(f_length)="25"];
     optional bytes  testbs = 12[(f_length)="24"];
+	optional int32 xxx1 =  19;
+	optional int32 xxx2 =  20;
+	optional int32 xxx3 =  21;
+	optional int32 xxx4 =  22;
+	optional int32 xxx5 =  23;
+	optional int32 xxx6 =  24;
+	optional int32 xxx7 =  25;
+	optional int32 xxx8 =  27;
+	optional HelloD xx9 = 28;
+	repeated HelloD  testadss = 30[(f_count)="30"];
 }
 
 enum EnumDef_value {

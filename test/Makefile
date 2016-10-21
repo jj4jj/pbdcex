@@ -8,7 +8,8 @@ proto/test.pb.h: proto/test.proto ../include/extensions.proto
 	${protoc} $^ -Iproto -I../include -I/usr/local/include ${protoi} --cpp_out=proto
 
 proto/test.cex.hpp: proto/test.proto
-	../bin/pbdcexer -pproto/test.proto -mHello --cpp_out=. ${protoi} -I../include -Iproto -t./pbdcex.core.hxx
+	../bin/pbdcexer -pproto/test.proto -mHello --cpp_out=. ${protoi} -I../include -Iproto
+	#../bin/pbdcexer -pproto/test.proto -mHello --cpp_out=. ${protoi} -I../include -Iproto -t./pbdcex.core.hxx
 
 
 sql:

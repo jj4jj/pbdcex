@@ -103,13 +103,15 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         return ret;
     }
 	void     diff(const {{ vmsg.meta | cs.msg.name }} & orgv , {{ vmsg.meta | msg.name }} & updates, {{ vmsg.meta | msg.name }} & removes) const {
+		updates.Clear();
+		removes.Clear();
 		{{!for vf in vmsg.pkfields}}
 		{{!if vf.meta | field.is_array }}
 		{
 			decltype(this->{{vf.meta | cs.field.name}}.count) i = 0, j = 0;
-			while(i <= this->{{vf.meta | cs.field.name}}.count || j < orgv.{{vf.meta | cs.field.name}}.count){
-				if(i <= this->{{vf.meta | cs.field.name}}.count && j < orgv.{{vf.meta | cs.field.name}}.count &&
-					this->{{vf.meta | cs.field.name}}.list[i] == this->{{vf.meta | cs.field.name}}.list[j]){
+			while(i < this->{{vf.meta | cs.field.name}}.count || j < orgv.{{vf.meta | cs.field.name}}.count){
+				if((i < this->{{vf.meta | cs.field.name}}.count) && (j < orgv.{{vf.meta | cs.field.name}}.count) &&
+				   (this->{{vf.meta | cs.field.name}}.list[i] == orgv.{{vf.meta | cs.field.name}}.list[j])){
 					auto upd = updates.mutable_{{ vf.meta | field.name }}()->Add();
 					{{!if vf.meta | field.is_msg }}						
 					auto rem = updates.mutable_{{ vf.meta | field.name }}()->Add();
@@ -122,8 +124,9 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 					*upd = this->{{vf.meta | cs.field.name}}.list[i];
 					{{}}
 					++i; ++j;
+					continue;
 				}
-				else if (i < this->{{vf.meta | cs.field.name}}.count) {
+				if (i < this->{{vf.meta | cs.field.name}}.count) {
 					auto upd = updates.mutable_{{ vf.meta | field.name }}()->Add();
 					{{!if vf.meta | field.is_msg }}
 					this->{{vf.meta | cs.field.name}}.list[i].convto(*upd);
@@ -135,8 +138,9 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 					*upd = this->{{vf.meta | cs.field.name}}.list[i];
 					{{}}
 					++i;
+					continue;
 				}
-				else {
+				if (j < orgv.{{ vf.meta | cs.field.name }}.count){
 					auto rem = removes.mutable_{{ vf.meta | field.name }}()->Add();
 					{{!if vf.meta | field.is_msg }}
 					this->{{vf.meta | cs.field.name}}.list[i].convto(*rem);
@@ -148,6 +152,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 					*rem = this->{{vf.meta | cs.field.name}}.list[j];
 					{{}}
 					++j;
+					continue;
 				}
 			}
 		}
@@ -207,7 +212,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         size_t avhs[] = {
         {{!for vf in vmsg.pkfields}}
         {{!if vf.meta|field.is_array}}
-             this->{{vf.meta|cs.field.name}}.hash(),
+            this->{{vf.meta|cs.field.name}}.hash(),
         {{!elif vf.meta|field.is_num}}
             (size_t)(this->{{vf.meta|cs.field.name}}),
         {{!else}}

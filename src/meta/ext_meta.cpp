@@ -9,40 +9,15 @@ using namespace google::protobuf;
 
 #define DIM_ARRAY(a)	(sizeof((a))/sizeof((a)[0]))
 
-static inline std::string &       strltrim(std::string & str, const char * charset) {
-	if (str.empty() || !charset || !*charset) {
-		return str;
+static inline  void
+_strreplace(::std::string & ts, const ::std::string & p, const ::std::string & v) {
+	auto beg = 0;
+	auto fnd = ts.find(p, beg);
+	while (fnd != ::std::string::npos) {
+		ts.replace(fnd, p.length(), v);
+		beg = fnd + v.length();
+		fnd = ts.find(p, beg);
 	}
-	for (size_t i = 0; i < str.length(); ++i) {
-		if (!strchr(charset, str[i])) {
-			if (i > 0) {
-				str.erase(0, i);
-			}
-			return str;
-		}
-	}
-	return str;
-}
-static inline std::string &       strrtrim(std::string & str, const char * charset) {
-	if (str.empty() || !charset || !*charset) {
-		return str;
-	}
-	for (size_t i = str.length() - 1; ((long int)i) >= 0; --i) {
-		if (!strchr(charset, str[i])) {
-			if (i > 0) {
-				str.erase(i, str.length() - i);
-			}
-			return str;
-		}
-	}
-	return str;
-}
-static inline std::string &       strtrim(std::string & str, const char * charset) {
-	if (str.empty() || !charset || !*charset) {
-		return str;
-	}
-	strltrim(str, charset);
-	return strrtrim(str, charset);
 }
 
 template<class D>
@@ -257,7 +232,7 @@ int		EXTMessageMeta::ParsePKS(){
 				f_field_name = m_pks.substr(bpos);
 			}
 		}
-		strtrim(f_field_name," \t\n");
+		_strreplace(f_field_name," ","");
 		pks_name.push_back(f_field_name);
 		for (auto & suf : sub_fields){
 			if (suf.field_desc->name() == f_field_name){

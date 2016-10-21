@@ -86,7 +86,7 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * t
 	try {
 		string file = pdc->conf.cpp.out_path;
 		file += "/";			
-		file += desc->file()->name();
+		file += dcs::path_base(desc->file()->name().c_str());
 		if (pdc->conf.cpp.custom_ext_name.empty()){
 			file.replace(file.find(".proto"), 6, ".cex.hpp");
 		}
