@@ -96,25 +96,41 @@ string EXTFieldMeta::GetScalarTypeName(){
 	else if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE){
 		return EXTMetaUtil::GetStructName(field_desc->message_type());
 	}
+	else if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING) {
+		std::string type_name;
+		if (field_desc->type() == FieldDescriptor::TYPE_STRING) {
+			type_name = "string_t<";
+			type_name += f_length;
+			type_name += ">";
+		}
+		else {
+			type_name = "bytes_t<";
+			type_name += f_length;
+			type_name += ">";
+		}
+		return type_name;
+	}
 	return pszTypeName;
 }
 string EXTFieldMeta::GetTypeName() {
 	string type_name = GetScalarTypeName().c_str();
+	/*
 	if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING){
-		if (field_desc->type() == FieldDescriptor::TYPE_STRING){
-            type_name = "string_t<";
-            type_name += f_length;
-            type_name += ">";
-		}
-		else {
-            type_name = "bytes_t<";
-            type_name += f_length;
-            type_name += ">";
-		}
+	if (field_desc->type() == FieldDescriptor::TYPE_STRING){
+	type_name = "string_t<";
+	type_name += f_length;
+	type_name += ">";
 	}
-    if (z_count > 0){
-        type_name = "array_t<" + type_name + ", " + f_count + ">";
-    }
+	else {
+	type_name = "bytes_t<";
+	type_name += f_length;
+	type_name += ">";
+	}
+	}
+	*/
+	if (z_count > 0) {
+		type_name = "array_t<" + type_name + ", " + f_count + ">";
+	}
     return type_name;
 }
 string EXTFieldMeta::GetVarName() {

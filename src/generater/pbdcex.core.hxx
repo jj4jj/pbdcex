@@ -108,22 +108,19 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 		{{!for vf in vmsg.fields}}
 		{{!if vf.meta | field.is_array }}
 		{//block of checking array differ
-			decltype(this->{{vf.meta | cs.field.name}}.count) i = 0, j = 0;
+			decltype(this->{{vf.meta | cs.field.name}}.count) i = 0;
 			for (i = 0;i < this->{{vf.meta | cs.field.name}}.count; ++i) {
-				bool found = false;
-				for (j = 0; j < orgv.{{vf.meta | cs.field.name}}.count; ++j) {
-					if (this->{{vf.meta | cs.field.name}}.list[i] == orgv.{{vf.meta | cs.field.name}}.list[j]) {
-						{{!if vf.meta | field.is_msg }}
-						auto upd = updates.mutable_{{vf.meta | field.name}}()->Add();
-						auto rem = updates.mutable_{{vf.meta | field.name}}()->Add();
-						this->{{vf.meta | cs.field.name}}.list[i].diff(orgv.{{vf.meta | cs.field.name}}.list[j], *upd, *rem);
-						{{}}
-						found = true;
-						break;
-					}
+				int idx = orgv.{{vf.meta | cs.field.name}}.lfind(this->{{vf.meta | cs.field.name}}.list[i]);
+				if (idx >= 0) {
+					{{!if vf.meta | field.is_msg }}
+					auto upd = updates.mutable_{{vf.meta | field.name}}()->Add();
+					auto rem = removes.mutable_{{vf.meta | field.name}}()->Add();
+					this->{{vf.meta | cs.field.name}}.list[i].diff(orgv.{{vf.meta | cs.field.name}}.list[idx], *upd, *rem);
+					{{}}
+					continue;
 				}
-				if (!found) {
-					auto upd = updates.mutable_{{vf.meta | cs.field.name}}()->Add();
+				else {
+					auto upd = updates.mutable_{{vf.meta | field.name}}()->Add();
 					{{!if vf.meta | field.is_msg }}
 					this->{{vf.meta | cs.field.name}}.list[i].convto(*upd);
 					{{!elif vf.meta | field.is_string }}
@@ -135,30 +132,24 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 					{{}}
 				}
 			}
-			for (j = 0; j < orgv.{{vf.meta | cs.field.name}}.count; ++j) {
-				bool found = false;
-				for (i = 0;i < this->{{vf.meta | cs.field.name}}.count; ++i) {
-					if (this->{{vf.meta | cs.field.name}}.list[i] == orgv.{{vf.meta | cs.field.name}}.list[j]) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					auto rem = removes.mutable_{{vf.meta | cs.field.name}}()->Add();
+			for (i = 0; i < orgv.{{vf.meta | cs.field.name}}.count; ++i) {
+				int idx = this->{{vf.meta | cs.field.name}}.lfind(orgv.{{vf.meta | cs.field.name}}.list[i]);
+				if (idx < 0) {
+					auto rem = removes.mutable_{{vf.meta | field.name}}()->Add();
 					{{!if vf.meta | field.is_msg }}
-					orgv.{{vf.meta | cs.field.name}}.list[j].convto(*rem);
+					orgv.{{vf.meta | cs.field.name}}.list[i].convto(*rem);
 					{{!elif vf.meta | field.is_string }}
-					rem->assign(orgv.{{vf.meta | cs.field.name}}.list[j].data);
+					rem->assign(orgv.{{vf.meta | cs.field.name}}.list[i].data);
 					{{!elif vf.meta | field.is_bytes }}
-					rem->assign((const char*)orgv.{{vf.meta | cs.field.name}}.list[j].data, this->{{vf.meta | cs.field.name}}.list[j].length);
+					rem->assign((const char*)orgv.{{vf.meta | cs.field.name}}.list[i].data, orgv.{{vf.meta | cs.field.name}}.list[i].length);
 					{{!else}}
-					*rem = this->{{vf.meta | cs.field.name}}.list[j];
+					*rem = orgv.{{vf.meta | cs.field.name}}.list[i];
 					{{}}
 				}//end if
 			}//end with for checking remove
 		}//end with array diff block 
 		{{!elif vf.meta | field.is_msg}}
-		this->{{vf.meta | cs.field.name}}.diff(orgv.{{vf.meta | cs.field.name}}, *updates.mutable_{{ vf.meta | cs.field.name }}(), *removes.mutable_{{ vf.meta | cs.field.name }}());
+		this->{{vf.meta | cs.field.name}}.diff(orgv.{{vf.meta | cs.field.name}}, *updates.mutable_{{ vf.meta | field.name }}(), *removes.mutable_{{ vf.meta | field.name }}());
 		{{!else}}
 		{{!if vf.meta | field.is_required}}
 		{{!if vf.meta | field.is_string }}
@@ -176,6 +167,91 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
 			updates.set_{{ vf.meta | field.name }}((char*)this->{{ vf.meta | cs.field.name }}.data, this->{{ vf.meta | cs.field.name }}.length);
 			{{!else}}
 			updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }});
+			{{}}
+		}
+		{{}}
+		{{}}
+		{{}}
+	}
+	void     patch(const {{ vmsg.meta | msg.name }} & updates, const {{ vmsg.meta | msg.name }} & removes) {
+		{{!for vf in vmsg.fields}}
+		{{!if vf.meta | field.is_array }}
+		{//block of checking array patch
+			static {{vf.meta | cs.field.scalar_type}}	item_tmp;
+			static {{vf.meta | cs.field.scalar_type}}	item_tmp_remove;
+			//get same update and removes
+			for (int k = 0; k < removes.{{vf.meta | field.name}}_size(); ++k) {				
+				for (; 0 == k && k < updates.{{vf.meta | field.name}}_size(); ++k) {
+					{{!if vf.meta | field.is_msg }}
+					item_tmp.convfrom(removes.{{vf.meta | field.name}}(k));
+					item_tmp_remove.convfrom(updates.{{vf.meta | field.name}}(k));
+					{{!elif vf.meta | field.is_string }}
+					item_tmp.assign(removes.{{vf.meta | field.name}}(k));
+					item_tmp_remove.assign(updates.{{vf.meta | field.name}}(k));
+					{{!elif vf.meta | field.is_bytes }}
+					item_tmp.assign(removes.{{vf.meta | field.name}}(k));
+					item_tmp_remove.assign(updates.{{vf.meta | field.name}}(k));
+					{{!else}}
+					item_tmp.assign(removes.{{vf.meta | field.name}}(k));
+					item_tmp_remove.assign(updates.{{vf.meta | field.name}}(k));
+					{{}}
+					if (item_tmp_remove == item_tmp) {
+						continue;//skip the samers (for update not remove)
+					}
+				}
+				{{!if vf.meta | field.is_msg }}
+				item_tmp.convfrom(removes.{{vf.meta | field.name}}(k));
+				{{!elif vf.meta | field.is_string }}
+				item_tmp.assign(removes.{{vf.meta | field.name}}(k));
+				{{!elif vf.meta | field.is_bytes }}
+				item_tmp.assign(removes.{{vf.meta | field.name}}(k));
+				{{!else}}
+				item_tmp = removes.{{vf.meta | field.name}}(k);
+				{{}}
+				int idx = this->{{vf.meta | cs.field.name}}.lfind(item_tmp);
+				assert("removes item not found in origin !" && idx >= 0);
+				this->{{vf.meta | cs.field.name}}.lremove(idx);
+			}//end with for checking remove
+			for (int j = 0, k = 0; j < updates.{{vf.meta | field.name}}_size(); ++j) {
+				{{!if vf.meta | field.is_msg }}
+				item_tmp.convfrom(updates.{{vf.meta | field.name}}(j));
+				{{!elif vf.meta | field.is_string }}
+				item_tmp.assign(updates.{{vf.meta | field.name}}(j));
+				{{!elif vf.meta | field.is_bytes }}
+				item_tmp.assign(updates.{{vf.meta | field.name}}(j));
+				{{!else}}
+				item_tmp = updates.{{vf.meta | field.name}}(j);
+				{{}}
+				{{!if vf.meta | field.is_msg }}
+				int idx = this->{{vf.meta | cs.field.name}}.lfind(item_tmp);
+				if (idx >= 0) {
+					assert("update msg removes shoud has removes part" && k >= 0 && k < removes.{{vf.meta | field.name}}_size());
+					this->{{vf.meta | cs.field.name}}.list[idx].patch(updates.{{vf.meta | field.name}}(j), removes.{{vf.meta | field.name}}(k++));
+				}
+				{{!else}}
+				this->{{vf.meta | cs.field.name}}.lappend(item_tmp);
+				{{}}
+			}//end for append or update
+		}//end with array diff block 
+		{{!elif vf.meta | field.is_msg}}
+		this->{{vf.meta | cs.field.name}}.patch(updates.{{ vf.meta | field.name }}(), removes.{{ vf.meta | field.name }}());
+		{{!else}}
+		{{!if vf.meta | field.is_required}}
+		{{!if vf.meta | field.is_string }}
+		this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+		{{!elif vf.meta | field.is_bytes}}
+		this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+		{{!else}}
+		this->{{ vf.meta | cs.field.name }} = updates.{{ vf.meta | field.name }}();
+		{{}}
+		{{!else}}
+		if (updates.has_{{vf.meta | field.name}}()) {
+			{{!if vf.meta | field.is_string }}
+			this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+			{{!elif vf.meta | field.is_bytes}}
+			this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+			{{!else}}
+			this->{{ vf.meta | cs.field.name }} = updates.{{ vf.meta | field.name }}();
 			{{}}
 		}
 		{{}}
