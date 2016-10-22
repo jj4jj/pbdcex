@@ -93,7 +93,7 @@ int main(){
     printf("after insert %s\n", hash.stat(dstr));
 
 
-	static Hello_ST	hst1,hst2;
+	static Hello_ST	hst1,hst2, hst3;
 	hst1.construct();
 	static HelloD_ST hds;
 	hds.b.a.f1 = 10;
@@ -117,20 +117,24 @@ int main(){
 
 	//remove 10,30
 	//add 99
-	Hello upd,rem;	
+	Hello upd;	
 	timeval tv;
 	gettimeofday(&tv, 0);
 	for (int i = 0;i < 10000; ++i) {
-		hst2.diff(hst1, upd, rem);
+		hst2.diff(hst1, upd);
+		hst3 = hst1;
+		hst3.patch(upd);
 	}
 	timeval tv2;
 	gettimeofday(&tv2, 0);
-	hst2.diff(hst1, upd, rem);
-	std::string ds1,ds2;
-	printf("hst2(\n[%s]\n).diff(hst1)\n[%s]\n 100000 times:%ld.%ld updates(add or replace):\n[%s]\nremoves:\n[%s]\n",
+	hst2.diff(hst1, upd);
+	hst3=hst1;
+	hst3.patch(upd);
+	std::string ds1,ds2,ds3;
+	printf("hst2(\n[%s]\n).diff(hst1)\n[%s]\n 100000 times:%ld.%ld \nupdates(add or replace):\n[%s]\nhst3:\n[%s]\n hst2=hst3?:%d\n",
 		hst2.debugs(ds1),hst1.debugs(ds2),
 		tv2.tv_sec - tv.tv_sec, tv2.tv_usec - tv.tv_usec,
-	upd.ShortDebugString().c_str(), rem.ShortDebugString().c_str());
+	upd.ShortDebugString().c_str(), hst3.debugs(ds3), hst3==hst2);
 
 
     return 0;
