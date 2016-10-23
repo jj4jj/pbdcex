@@ -2,7 +2,7 @@ clean:
 	rm -f htest
 
 htest: test.cpp proto/test.pb.h test.cex.hpp
-	g++ test.cpp -g3 -I. -I../include/pbdcex  -Iproto proto/test.pb.cc proto/extensions.pb.cc ${protoi} -o htest ${protol} -pthread --std=c++11
+	g++ test.cpp -g3 -I. -I../include  -Iproto proto/test.pb.cc proto/extensions.pb.cc ${protoi} -o htest ${protol} -pthread --std=c++11
 
 proto/test.pb.h: proto/test.proto ../include/pbdcex/extensions.proto
 	${protoc} $^ -Iproto -I../include/pbdcex -I/usr/local/include ${protoi} --cpp_out=proto

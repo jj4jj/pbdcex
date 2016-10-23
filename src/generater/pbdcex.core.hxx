@@ -8,7 +8,7 @@
 {{!for vd in depencies}}
 #include "{{vd}}"
 {{}}
-#include "pbdcex.core.hpp"
+#include "pbdcex/pbdcex.core.hpp"
 {{ns_begin}}
 using pbdcex::string_t;
 using pbdcex::bytes_t;
