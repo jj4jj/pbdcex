@@ -67,7 +67,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         return ret;
     }
     int     convfrom(const {{vmsg.meta|msg.name}} & frommsg_) {
-		int ret = 0;
+        int ret = 0;
         {{!for vf in vmsg.fields}}
         {{!if vf.meta|field.is_array}}
         this->{{vf.meta|cs.field.name}}.count=0;
@@ -102,111 +102,111 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         {{}}
         return ret;
     }
-	void     diff(const {{ vmsg.meta | cs.msg.name }} & orgv , {{ vmsg.meta | msg.name }} & updates) const {
-		updates.Clear();
-		{{!for vf in vmsg.fields}}
-		{{!if vf.meta | field.is_array }}
-		{//block of checking array differ
-			decltype(this->{{vf.meta | cs.field.name}}.count) i = 0;
-			for (i = 0;i < this->{{vf.meta | cs.field.name}}.count; ++i) {
-				auto upd_ = updates.mutable_{{vf.meta | field.name}}()->Add();
-				{{!if vf.meta | field.is_msg }}
-				if (i < orgv.{{vf.meta | cs.field.name}}.count) {
-					this->{{vf.meta | cs.field.name}}.list[i].diff(orgv.{{vf.meta | cs.field.name}}.list[i], *upd_);
-				}
-				else {
-					this->{{vf.meta | cs.field.name}}.list[i].convto(*upd_);
-				}
-				{{!elif vf.meta | field.is_string }}
-				upd_->assign(this->{{vf.meta | cs.field.name}}.list[i].data);
-				{{!elif vf.meta | field.is_bytes }}
-				upd_->assign((const char*)this->{{vf.meta | cs.field.name}}.list[i].data, this->{{vf.meta | cs.field.name}}.list[i].length);
-				{{!else}}
-				*upd_ = this->{{vf.meta | cs.field.name}}.list[i];
-				{{}}
-			}			
-		}//end with array diff block 
-		{{!elif vf.meta | field.is_msg}}
-		this->{{vf.meta | cs.field.name}}.diff(orgv.{{vf.meta | cs.field.name}}, *updates.mutable_{{ vf.meta | field.name }}());
-		{{!else}}
-		{{!if vf.meta | field.is_required}}
-		{{!if vf.meta | field.is_string }}
-		updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }}.data);
-		{{!elif vf.meta | field.is_bytes}}
-		updates.set_{{ vf.meta | field.name }}((char*)this->{{ vf.meta | cs.field.name }}.data, this->{{ vf.meta | cs.field.name }}.length);
-		{{!else}}
-		updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }});
-		{{}}
-		{{!else}}
-		if (!(this->{{vf.meta | cs.field.name}} == orgv.{{vf.meta | cs.field.name}})) {
-			{{!if vf.meta | field.is_string }}
-			updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }}.data);
-			{{!elif vf.meta | field.is_bytes}}
-			updates.set_{{ vf.meta | field.name }}((char*)this->{{ vf.meta | cs.field.name }}.data, this->{{ vf.meta | cs.field.name }}.length);
-			{{!else}}
-			updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }});
-			{{}}
-		}
-		{{}}
-		{{}}
-		{{}}
-	}
-	void     patch(const {{ vmsg.meta | msg.name }} & updates) {
-		{{!for vf in vmsg.fields}}
-		{{!if vf.meta | field.is_array }}
-		{//block of checking array patch
-			static {{vf.meta | cs.field.scalar_type}}	item_temp;
-			for (int i = 0; i < updates.{{vf.meta | field.name}}_size(); ++i) {
-				if (i < (int)this->{{vf.meta | cs.field.name}}.count) {
-					{{!if vf.meta | field.is_msg }}
-					this->{{vf.meta | cs.field.name}}.list[i].patch(updates.{{vf.meta | field.name}}(i));	
-					{{!elif vf.meta | field.is_string }}
-					this->{{vf.meta | cs.field.name}}.list[i].assign(updates.{{vf.meta | field.name}}(i));
-					{{!elif vf.meta | field.is_bytes }}
-					this->{{vf.meta | cs.field.name}}.list[i].assign(updates.{{vf.meta | field.name}}(i));
-					{{!else}}
-					this->{{vf.meta | cs.field.name}}.list[i] = updates.{{vf.meta | field.name}}(i);
-					{{}}
-				}
-				else {
-					{{!if vf.meta | field.is_msg }}
-					item_temp.convfrom(updates.{{vf.meta | field.name}}(i));
-					{{!elif vf.meta | field.is_string }}
-					item_temp.assign(updates.{{vf.meta | field.name}}(i));
-					{{!elif vf.meta | field.is_bytes }}
-					item_temp.assign(updates.{{vf.meta | field.name}}(i));
-					{{!else}}
-					item_temp = updates.{{vf.meta | field.name}}(i);
-					{{}}
-					this->{{vf.meta | cs.field.name}}.lappend(item_temp);
-				}
-			}//end for append or update
-		}//end with array diff block 
-		{{!elif vf.meta | field.is_msg}}
-		this->{{vf.meta | cs.field.name}}.patch(updates.{{ vf.meta | field.name }}());
-		{{!else}}
-		{{!if vf.meta | field.is_required}}
-		{{!if vf.meta | field.is_string }}
-		this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
-		{{!elif vf.meta | field.is_bytes}}
-		this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
-		{{!else}}
-		this->{{ vf.meta | cs.field.name }} = updates.{{ vf.meta | field.name }}();
-		{{}}
-		{{!else}}
-		if (updates.has_{{vf.meta | field.name}}()) {
-			{{!if vf.meta | field.is_string }}
-			this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
-			{{!elif vf.meta | field.is_bytes}}
-			this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
-			{{!else}}
-			this->{{ vf.meta | cs.field.name }} = updates.{{ vf.meta | field.name }}();
-			{{}}
-		}
-		{{}}
-		{{}}
-		{{}}
-	}
+    void     diff(const {{ vmsg.meta | cs.msg.name }} & orgv , {{ vmsg.meta | msg.name }} & updates) const {
+        updates.Clear();
+        {{!for vf in vmsg.fields}}
+        {{!if vf.meta | field.is_array }}
+        {//block of checking array differ
+            decltype(this->{{vf.meta | cs.field.name}}.count) i = 0;
+            for (i = 0;i < this->{{vf.meta | cs.field.name}}.count; ++i) {
+                auto upd_ = updates.mutable_{{vf.meta | field.name}}()->Add();
+                {{!if vf.meta | field.is_msg }}
+                if (i < orgv.{{vf.meta | cs.field.name}}.count) {
+                    this->{{vf.meta | cs.field.name}}.list[i].diff(orgv.{{vf.meta | cs.field.name}}.list[i], *upd_);
+                }
+                else {
+                    this->{{vf.meta | cs.field.name}}.list[i].convto(*upd_);
+                }
+                {{!elif vf.meta | field.is_string }}
+                upd_->assign(this->{{vf.meta | cs.field.name}}.list[i].data);
+                {{!elif vf.meta | field.is_bytes }}
+                upd_->assign((const char*)this->{{vf.meta | cs.field.name}}.list[i].data, this->{{vf.meta | cs.field.name}}.list[i].length);
+                {{!else}}
+                *upd_ = this->{{vf.meta | cs.field.name}}.list[i];
+                {{}}
+            }            
+        }//end with array diff block 
+        {{!elif vf.meta | field.is_msg}}
+        this->{{vf.meta | cs.field.name}}.diff(orgv.{{vf.meta | cs.field.name}}, *updates.mutable_{{ vf.meta | field.name }}());
+        {{!else}}
+        {{!if vf.meta | field.is_required}}
+        {{!if vf.meta | field.is_string }}
+        updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }}.data);
+        {{!elif vf.meta | field.is_bytes}}
+        updates.set_{{ vf.meta | field.name }}((char*)this->{{ vf.meta | cs.field.name }}.data, this->{{ vf.meta | cs.field.name }}.length);
+        {{!else}}
+        updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }});
+        {{}}
+        {{!else}}
+        if (!(this->{{vf.meta | cs.field.name}} == orgv.{{vf.meta | cs.field.name}})) {
+            {{!if vf.meta | field.is_string }}
+            updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }}.data);
+            {{!elif vf.meta | field.is_bytes}}
+            updates.set_{{ vf.meta | field.name }}((char*)this->{{ vf.meta | cs.field.name }}.data, this->{{ vf.meta | cs.field.name }}.length);
+            {{!else}}
+            updates.set_{{ vf.meta | field.name }}(this->{{ vf.meta | cs.field.name }});
+            {{}}
+        }
+        {{}}
+        {{}}
+        {{}}
+    }
+    void     patch(const {{ vmsg.meta | msg.name }} & updates) {
+        {{!for vf in vmsg.fields}}
+        {{!if vf.meta | field.is_array }}
+        {//block of checking array patch
+            static {{vf.meta | cs.field.scalar_type}}    item_temp;
+            for (int i = 0; i < updates.{{vf.meta | field.name}}_size(); ++i) {
+                if (i < (int)this->{{vf.meta | cs.field.name}}.count) {
+                    {{!if vf.meta | field.is_msg }}
+                    this->{{vf.meta | cs.field.name}}.list[i].patch(updates.{{vf.meta | field.name}}(i));    
+                    {{!elif vf.meta | field.is_string }}
+                    this->{{vf.meta | cs.field.name}}.list[i].assign(updates.{{vf.meta | field.name}}(i));
+                    {{!elif vf.meta | field.is_bytes }}
+                    this->{{vf.meta | cs.field.name}}.list[i].assign(updates.{{vf.meta | field.name}}(i));
+                    {{!else}}
+                    this->{{vf.meta | cs.field.name}}.list[i] = updates.{{vf.meta | field.name}}(i);
+                    {{}}
+                }
+                else {
+                    {{!if vf.meta | field.is_msg }}
+                    item_temp.convfrom(updates.{{vf.meta | field.name}}(i));
+                    {{!elif vf.meta | field.is_string }}
+                    item_temp.assign(updates.{{vf.meta | field.name}}(i));
+                    {{!elif vf.meta | field.is_bytes }}
+                    item_temp.assign(updates.{{vf.meta | field.name}}(i));
+                    {{!else}}
+                    item_temp = updates.{{vf.meta | field.name}}(i);
+                    {{}}
+                    this->{{vf.meta | cs.field.name}}.lappend(item_temp);
+                }
+            }//end for append or update
+        }//end with array diff block 
+        {{!elif vf.meta | field.is_msg}}
+        this->{{vf.meta | cs.field.name}}.patch(updates.{{ vf.meta | field.name }}());
+        {{!else}}
+        {{!if vf.meta | field.is_required}}
+        {{!if vf.meta | field.is_string }}
+        this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+        {{!elif vf.meta | field.is_bytes}}
+        this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+        {{!else}}
+        this->{{ vf.meta | cs.field.name }} = updates.{{ vf.meta | field.name }}();
+        {{}}
+        {{!else}}
+        if (updates.has_{{vf.meta | field.name}}()) {
+            {{!if vf.meta | field.is_string }}
+            this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+            {{!elif vf.meta | field.is_bytes}}
+            this->{{ vf.meta | cs.field.name }}.assign(updates.{{ vf.meta | field.name }}());
+            {{!else}}
+            this->{{ vf.meta | cs.field.name }} = updates.{{ vf.meta | field.name }}();
+            {{}}
+        }
+        {{}}
+        {{}}
+        {{}}
+    }
     int     compare(const {{vmsg.meta|cs.msg.name}} & rhs_) const {
         int cmp = 0;
         {{!for vf in vmsg.pkfields}}
