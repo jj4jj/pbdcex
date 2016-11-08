@@ -74,7 +74,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         for (size_t i = 0; i < (size_t)frommsg_.{{ vf.meta | field.name }}_size() && i < {{ vf.meta | field.count }}; ++i, ++(this->{{ vf.meta | cs.field.name }}.count)){
             {{!if vf.meta|field.is_msg}}
             ret = this->{{vf.meta|cs.field.name}}.list[i].convfrom(frommsg_.{{vf.meta|field.name}}(i));
-            if (ret) {return __LINE__+ret;}
+            if (ret) { return __LINE__+ret; }
             {{!elif vf.meta|field.is_bytes}}
             assert(frommsg_.{{vf.meta|field.name}}(i).length() <= {{vf.meta|field.length}});
             this->{{ vf.meta | cs.field.name }}.list[i].assign(frommsg_.{{ vf.meta | field.name }}(i));
@@ -88,7 +88,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         {{!else}}
         {{!if vf.meta|field.is_msg}}
         ret = this->{{vf.meta|cs.field.name}}.convfrom(frommsg_.{{vf.meta|field.name}}());
-        if (ret) {return __LINE__+ret;}
+        if (ret) { return __LINE__+ret; }
         {{ !elif vf.meta | field.is_bytes }}
         assert(frommsg_.{{ vf.meta | field.name }}().length() <= {{ vf.meta | field.length }});
         this->{{vf.meta|cs.field.name}}.assign(frommsg_.{{vf.meta|field.name}}());
@@ -97,6 +97,38 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         this->{{vf.meta|cs.field.name}}.assign(frommsg_.{{vf.meta|field.name}}().data());
         {{!else}}
         this->{{vf.meta|cs.field.name}} = frommsg_.{{vf.meta|field.name}}();
+        {{}}
+        {{}}
+        {{}}
+        return ret;
+    }
+    int     check_convfrom(const {{vmsg.meta|msg.name}} & frommsg_) const {
+        int ret = 0;
+        {{!for vf in vmsg.fields}}
+        {{!if vf.meta|field.is_array}}
+        if ((size_t)frommsg_.{{ vf.meta | field.name }}_size() > {{ vf.meta | field.count }}){ return __LINE__; }
+        for (size_t i = 0; i < (size_t)frommsg_.{{ vf.meta | field.name }}_size() && i < {{ vf.meta | field.count }}; ++i){
+            {{!if vf.meta|field.is_msg}}
+            ret = this->{{vf.meta|cs.field.name}}.list[i]._check_convfrom(frommsg_.{{vf.meta|field.name}}(i));
+            if (ret) {return ret;}
+            {{!elif vf.meta|field.is_bytes}}
+            if (frommsg_.{{vf.meta|field.name}}(i).length() > {{vf.meta|field.length}}){ return __LINE__; }
+            {{ !elif vf.meta | field.is_string }}
+            if (frommsg_.{{ vf.meta | field.name }}(i).length() >= {{ vf.meta | field.length }}){ return __LINE__; }
+            {{!else}}
+            //
+            {{}}
+        }
+        {{!else}}
+        {{!if vf.meta|field.is_msg}}
+        ret = this->{{vf.meta|cs.field.name}}.check_convfrom(frommsg_.{{vf.meta|field.name}}());
+        if (ret) { return __LINE__; }
+        {{ !elif vf.meta | field.is_bytes }}
+        if (frommsg_.{{ vf.meta | field.name }}().length() > {{ vf.meta | field.length }}){ return __LINE__; }
+        {{ !elif vf.meta | field.is_string }}
+        if (frommsg_.{{ vf.meta | field.name }}().length() >= {{ vf.meta | field.length }}){ return __LINE__; }
+        {{!else}}
+        //
         {{}}
         {{}}
         {{}}
