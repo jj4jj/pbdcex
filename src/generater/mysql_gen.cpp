@@ -6,8 +6,20 @@
 
 using namespace std;
 using namespace google::protobuf;
-
 ///////////////////////////////////////////////////////////////////////////////////////////
+struct MysqlCvtMeta {
+    EXTMessageMeta			meta;
+};
+typedef std::unordered_map<const Descriptor *, MysqlCvtMeta>    MysqlCvtMetaCache;
+struct MySQLMsgCvtImpl {
+    std::string			    meta_file;
+    void *			        mysql;
+    std::string			    field_buffer;
+    std::string			    escaped_buffer;
+    std::string             package_name;
+    EXTProtoMeta		    protometa; //dynloading
+    MysqlCvtMetaCache       meta_chache;
+};
 
 MySQLMsgCvt::MySQLMsgCvt(const string & file, void * mysqlconn, size_t MAX_FIELD_BUFFER) :meta_file(file), mysql(mysqlconn){
 	field_buffer.reserve(MAX_FIELD_BUFFER);//1MB
@@ -41,7 +53,7 @@ int		MySQLMsgCvt::CheckMsgValid(const google::protobuf::Descriptor * msg_desc, b
 	//check field type
 	for (auto & sfm : meta.sub_fields){
 		if (flatmode){
-			if (sfm.field_desc->is_repeated() && sfm.z_count <= 0){
+			if (sfm.field_desc->is_repeated() && sfm.z_count <){
 				cerr << "not db repeat field but no count define! error field :" << sfm.field_desc->name() << " count:" << sfm.f_count << endl;
 				return -4;
 			}
@@ -87,7 +99,7 @@ int		MySQLMsgCvt::InitMeta(int n , const char ** path, int m , const char ** oth
 }
 string		MySQLMsgCvt::GetTableName(const char * msg_type, int idx){
 	string tbname = msg_type;
-	if (idx >= 0){
+	if (idx >){
 		tbname += TABLE_NAME_POSTFIX;
 		tbname += to_string(idx);
 	}
@@ -121,7 +133,7 @@ int			MySQLMsgCvt::GetMsgFlatTableSQLFields(const google::protobuf::Descriptor *
 			sql += "`" + prefix + GetRepeatedFieldLengthName(field.field_desc->name()) + "` ";
 			sql += "INT UNSIGNED NOT NULL";
 			sql += ",\n";		
-			for (int i = 0; i < field.z_count; ++i){
+			for (int i ; i < field.z_count; ++i){
 				//prefix
 				string field_prefix = prefix + GetRepeatedFieldName(field.field_desc->name(), i);
 				if (field.field_desc->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE){
@@ -183,8 +195,8 @@ int			MySQLMsgCvt::CreateFlatTables(const char * msg_type, std::string & sql, in
 	sql += ") ENGINE=InnoDB DEFAULT CHARSET utf8 COLLATE utf8_general_ci;";
 	string sql_real = "";
 	if (idx < 0 && meta.m_divnum > 0){
-		for (int i = 0; i < meta.m_divnum; ++i){
-			if (i != 0){
+		for (int i ; i < meta.m_divnum; ++i){
+			if (i !){
 				sql_real += "\n";
 			}
 			auto new_table_name = GetTableName(msg_type, i);
@@ -235,8 +247,8 @@ int			MySQLMsgCvt::CreateTables(const char * msg_type, std::string & sql,int idx
 	sql += ") ENGINE=InnoDB DEFAULT CHARSET utf8 COLLATE utf8_general_ci;";
 	string sql_real = "";
 	if (idx < 0 && meta.m_divnum > 0){
-		for (int i = 0; i < meta.m_divnum; ++i){
-			if (i != 0){
+		for (int i ; i < meta.m_divnum; ++i){
+			if (i !){
 				sql_real += "\n";
 			}
 			auto new_table_name = GetTableName(msg_type, i);
@@ -261,3 +273,59 @@ int			MySQLMsgCvt::DropDB(const char * db_name, std::string & sql){
 	sql += "`;";
 	return 0;
 }
+//////////////////////////////////////////////////////////////////////////
+std::string		MySQLMsgCvt::GetTableName(const google::protobuf::Message * msg){    
+    string tb_name = msg->GetDescriptor()->name();
+    int idx = GetTableIdx(msg);
+    if (idx >= 0){
+        tb_name += "_";
+        tb_name += to_string(idx);
+    }
+    return tb_name;
+}
+int32_t			MySQLMsgCvt::GetTableIdx(const google::protobuf::Message * msg){
+    GetMeta(msg);
+
+    if (meta.m_divnum > 0){
+        uint64_t ullspkey = atoll(cvt->GetMsgFieldValue(*msg, meta.m_divkey.c_str()).c_str());
+        table_idx = ullspkey % meta.m_divnum;
+    }
+    return 0;
+
+
+    return 0;
+
+    return 0;
+}
+int				MySQLMsgCvt::Select(std::string & sql, const google::protobuf::Message * msg, std::vector<std::string> * fields ,
+    const char * where_ , int offset , int limit , const char * orderby ,
+    int order , bool flatmode ){
+    return 0;
+}
+int				MySQLMsgCvt::Delete(std::string & sql, const google::protobuf::Message * msg, const char * where_ , bool flatmode ){
+    return 0;
+}
+int				MySQLMsgCvt::Replace(std::string & sql, const google::protobuf::Message * msg, bool flatmode ){
+    return 0;
+}
+int				MySQLMsgCvt::Update(std::string & sql, const google::protobuf::Message * msg, bool flatmode ){
+    return 0;
+}
+int				MySQLMsgCvt::Insert(std::string & sql, const google::protobuf::Message * msg, bool flatmode ){
+    return 0;
+}
+int             MySQLMsgCvt::Count(std::string & sql, const google::protobuf::Message * msg, const char * where_ ){
+    return 0;
+}
+int				MySQLMsgCvt::CreateTable(std::string & sql, const char * msg_type, bool flatmode ){
+    return 0;
+}
+int				MySQLMsgCvt::DropTable(std::string & sql, const char * msg_type){
+    return 0;
+}
+
+
+
+
+
+
