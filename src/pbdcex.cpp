@@ -15,7 +15,7 @@ using namespace dcs;
 struct pbdcex_t {
 	pbdcex_config_t	conf;
 	EXTProtoMeta	proto;
-	MySQLMsgCvt		* sql_cvt;
+	MySQLMsgMeta		* sql_cvt;
 	pbdcex_t() :sql_cvt(nullptr){}
 };
 pbdcex_t *
@@ -48,7 +48,7 @@ pbdcex_create(const pbdcex_config_t & conf){
 		pbdcex_destroy(pdc);
 		return nullptr;
 	}
-	pdc->sql_cvt = new MySQLMsgCvt(pdc->conf.meta.files[0], nullptr);
+	pdc->sql_cvt = new MySQLMsgMeta(pdc->conf.meta.files[0], nullptr);
     //int InitMeta(int n = 0, const char ** path = nullptr, int m = 0, const char ** otherfiles = nullptr);
     if (pdc->sql_cvt->InitMeta(conf.meta.paths.size(), (const char **)paths, conf.meta.files.size()-1, (const char **)(files + 1))){
         GLOG_ERR("mysql converter init error !");
