@@ -26,9 +26,6 @@ public:
 private:
 	static	std::string		GetRepeatedFieldLengthName(const std::string & name);
 	static	std::string		GetRepeatedFieldName(const std::string & name, int idx);
-	static  bool			IsRepeatedFieldLength(const std::string & field_name,
-		const std::string & key);
-	int						GetMsgFlatTableSQLFields(const google::protobuf::Descriptor * msg_desc,
-		std::string & sql,
-		const std::string & prefix);
+	static  bool			IsRepeatedFieldLength(const std::string & field_name, const std::string & key);
+	int						GetMsgFlatTableSQLFields(const google::protobuf::Descriptor * msg_desc, std::string & sql, const std::string & prefix);
 };
