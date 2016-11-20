@@ -445,25 +445,16 @@ struct array_t {
     //////////////////////////////////////////////////////////
     /////////////////////binary-seaching//////////////////////
     int bfind(const T & tk) const {
-        int idx1st = lower_bound(tk);
-        int idx2nd = upper_bound(tk);
-        if (idx1st == idx2nd){
-            return -1;
-        }
-        while (idx1st < idx2nd){
-            if (tk == list[idx1st]){
-                return idx1st;
-            }
-            ++idx1st;
+        LengthT idx1st = lower_bound(tk);
+        if (idx1st < count && list[idx1st] == tk){
+            return idx1st;
         }
         return -1;
     }
     int binsert(const T & td, bool overflow_shift = false, bool uniq = false) {
         LengthT idx = lower_bound(td);
-        if (uniq && idx < count) {
-            if (list[idx] == td) {
-                return -1;
-            }
+        if (uniq && idx < count && list[idx] == td) {
+            return -1;
         }
         return linsert(idx, td, overflow_shift);
     }
@@ -473,11 +464,11 @@ struct array_t {
         return lremove(idx, false);
     }
     LengthT lower_bound(const T & tk) const {
-        const T * p = ::std::lower_bound((T*)list, (T*)list + count, (T&)tk);
+        const T * p = ::std::lower_bound(list, list + count, tk);
         return (p - list);
     }
     LengthT upper_bound(const T & tk) const {
-        const T * p = ::std::upper_bound((T*)list, (T*)list + count, (T&)tk);
+        const T * p = ::std::upper_bound(list, list + count, tk);
         return (p - list);
     }
     T & operator [](size_t idx){
