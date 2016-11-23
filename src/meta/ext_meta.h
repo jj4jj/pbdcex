@@ -53,10 +53,10 @@ struct EXTFieldMeta {
 	int32_t		z_count;
 
 	int			AttachDesc(const google::protobuf::FieldDescriptor * fd);
-	std::string GetScalarTypeName();
-	std::string GetTypeName();
-	std::string GetVarName();
-	std::string GetMysqlFieldType();
+	std::string GetScalarTypeName() const;
+	std::string GetTypeName() const;
+	std::string GetVarName() const;
+	std::string GetMysqlFieldType() const;
 };
 
 struct EXTMetaUtil {

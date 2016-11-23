@@ -116,19 +116,13 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * t
 
 int		
 pbdcex_generate_mysql_create(pbdcex_t * pdc, const char * msg){
-	auto pool = pdc->proto.GetPool();
-	auto desc = pool->FindMessageTypeByName(msg);
-	if (!desc){
-		GLOG_ERR("not found msg type:%s (should be full name)", msg);
-		return -1;
-	}
-	if (pdc->sql_cvt->CheckMsgValid(desc, true, pdc->conf.sql.flat_mode)){
+	if (pdc->sql_cvt->CheckMsgValid(msg, true, pdc->conf.sql.flat_mode)){
 		GLOG_ERR("check msg valid error type:%s !", msg);
 		return -2;
 	}
 	string sql;
 	if (pdc->conf.sql.flat_mode){
-		if (pdc->sql_cvt->CreateFlatTables(msg, sql)){
+		if (pdc->sql_cvt->CreateTables(msg, sql, -1, true)){
 			GLOG_ERR("get create flat tables error !");
 			return -3;
 		}

@@ -8,26 +8,24 @@ struct MySQLMsgMeta {
 	const EXTMessageMeta *
 						GetMsgExMeta(const std::string & name);
 public:
+	//msg
 	int					CreateTables(const std::string & name, std::string & sql, int idx = -1, bool flatmode = false);
 	int					CreateDB(const std::string & name, std::string & sql);
 	int					DropDB(const std::string & name, std::string & sql);
 
 public:
-    std::string		    GetTableName(const google::protobuf::Message &msg);
-    int32_t			    GetTableIdx(const google::protobuf::Message &msg);
-
-public:
-
-    int				    Select(std::string & sql, const google::protobuf::Message * msg, std::vector<std::string> * fields = nullptr, 
+	//msg
+	std::string		    GetTableName(const google::protobuf::Message &msg);
+    int				    Select(std::string & sql, const google::protobuf::Message & msg_key, std::vector<std::string> * fields = nullptr,
                             const char * where_ = nullptr, int offset = 0, int limit = 0, const char * orderby = nullptr,
                             int order = 1, bool flatmode = false);
-    int				    Delete(std::string & sql, const google::protobuf::Message * msg, const char * where_ = nullptr, bool flatmode = false);
-    int				    Replace(std::string & sql, const google::protobuf::Message * msg, bool flatmode = false);
-    int				    Update(std::string & sql, const google::protobuf::Message * msg, bool flatmode = false);
-    int				    Insert(std::string & sql, const google::protobuf::Message * msg, bool flatmode = false);
-    int                 Count(std::string & sql, const google::protobuf::Message * msg, const char * where_ = nullptr);
-    int				    CreateTable(std::string & sql, const char * msg_type, bool flatmode = false);
-    int				    DropTable(std::string & sql, const char * msg_type);
+    int				    Delete(std::string & sql, const google::protobuf::Message & msg, const char * where_ = nullptr, bool flatmode = false);
+    int				    Replace(std::string & sql, const google::protobuf::Message & msg, bool flatmode = false);
+    int				    Update(std::string & sql, const google::protobuf::Message & msg, bool flatmode = false);
+    int				    Insert(std::string & sql, const google::protobuf::Message & msg, bool flatmode = false);
+    int                 Count(std::string & sql, const google::protobuf::Message & msg, const char * where_ = nullptr);
+    int				    CreateTable(std::string & sql, const google::protobuf::Message & msg, bool flatmode = false);
+    int				    DropTable(std::string & sql, const google::protobuf::Message & msg);
 
 public:
 	MySQLMsgMeta(const std::string & file, void * mysqlconn, size_t MAX_FIELD_BUFFER = 1024 * 1024);

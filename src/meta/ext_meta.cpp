@@ -83,7 +83,7 @@ int	    EXTFieldMeta::AttachDesc(const FieldDescriptor * desc){
 	}
 	return 0;
 }
-string EXTFieldMeta::GetScalarTypeName(){
+string EXTFieldMeta::GetScalarTypeName() const {
 	static const char * s_var_type_names[] = { "",
 		"int32_t", "int64_t", "uint32_t",
 		"uint64_t", "double", "float",
@@ -112,7 +112,7 @@ string EXTFieldMeta::GetScalarTypeName(){
 	}
 	return pszTypeName;
 }
-string EXTFieldMeta::GetTypeName() {
+string EXTFieldMeta::GetTypeName() const {
 	string type_name = GetScalarTypeName().c_str();
 	/*
 	if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING){
@@ -133,13 +133,13 @@ string EXTFieldMeta::GetTypeName() {
 	}
     return type_name;
 }
-string EXTFieldMeta::GetVarName() {
+string EXTFieldMeta::GetVarName()  const {
 	//static const char * type_prefix = ["", "i", "ll", "dw", "ull", "df", "f", "b", "en", "str", "st"];
 	//desc->camelcase_name();
 	string lc_name = field_desc->lowercase_name();
 	return lc_name;
 }
-std::string EXTFieldMeta::GetMysqlFieldType(){
+std::string EXTFieldMeta::GetMysqlFieldType() const {
 	switch (field_desc->cpp_type()){
 	case FieldDescriptor::CPPTYPE_INT32:// 1,     // TYPE_INT32, TYPE_SINT32, TYPE_SFIXED32
 	case FieldDescriptor::CPPTYPE_ENUM:// 8,     // TYPE_ENUM
