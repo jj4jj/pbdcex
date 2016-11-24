@@ -9,7 +9,7 @@ struct MySQLMsgMeta {
 						GetMsgExMeta(const std::string & name);
 public:
 	//msg
-	int					CreateTables(const std::string & name, std::string & sql, int idx = -1, bool flatmode = false);
+	int					CreateTables(std::string & sql, const std::string & name, int idx = -1, bool flatmode = false);
 	int					CreateDB(const std::string & name, std::string & sql);
 	int					DropDB(const std::string & name, std::string & sql);
 

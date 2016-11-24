@@ -67,7 +67,6 @@ pbdcex_destroy(pbdcex_t * pdc){
 		delete pdc;
 	}
 }
-extern std::stringstream error_stream;
 
 int		
 pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * tf){
@@ -78,11 +77,11 @@ pbdcex_generate_flat_cpp_header(pbdcex_t * pdc, const char * msg, const char * t
 		return -1;
 	}
 	EXTMessageMeta	smm;
-	if (smm.AttachDesc(desc)){
-		GLOG_ERR("parse from message desc error :%s !",error_stream.str().c_str());
+	int ret = smm.AttachDesc(desc);
+	if (ret){
+		GLOG_ERR("parse from message desc error :%d !", ret);
 		return -2;
 	}
-	error_stream.clear();
 	try {
 		string file = pdc->conf.cpp.out_path;
 		file += "/";			
@@ -122,13 +121,13 @@ pbdcex_generate_mysql_create(pbdcex_t * pdc, const char * msg){
 	}
 	string sql;
 	if (pdc->conf.sql.flat_mode){
-		if (pdc->sql_cvt->CreateTables(msg, sql, -1, true)){
+		if (pdc->sql_cvt->CreateTables(sql, msg, -1, true)){
 			GLOG_ERR("get create flat tables error !");
 			return -3;
 		}
 	}
 	else{
-		if (pdc->sql_cvt->CreateTables(msg, sql)){
+		if (pdc->sql_cvt->CreateTables(sql,msg)){
 			GLOG_ERR("get create tables error !");
 			return -4;
 		}

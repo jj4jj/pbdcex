@@ -50,6 +50,53 @@ MySQLMsgMeta::~MySQLMsgMeta() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////implementation
+static inline std::string get_mysql_field_type_name(const EXTFieldMeta * em) {
+	switch (em->field_desc->cpp_type()) {
+	case FieldDescriptor::CPPTYPE_INT32:// 1,     // TYPE_INT32, TYPE_SINT32, TYPE_SFIXED32
+	case FieldDescriptor::CPPTYPE_ENUM:// 8,     // TYPE_ENUM
+		return "INT";
+	case FieldDescriptor::CPPTYPE_UINT32:// 3,     // TYPE_UINT32, TYPE_FIXED32
+		return "INT UNSIGNED";
+	case FieldDescriptor::CPPTYPE_INT64:// 2,     // TYPE_INT64, TYPE_SINT64, TYPE_SFIXED64
+		return "BIGINT";
+	case FieldDescriptor::CPPTYPE_UINT64:// 4,     // TYPE_UINT64, TYPE_FIXED64
+		return "BIGINT UNSIGNED";
+	case FieldDescriptor::CPPTYPE_DOUBLE:// 5,     // TYPE_DOUBLE
+		return "DOUBLE";
+	case FieldDescriptor::CPPTYPE_FLOAT:// 6,     // TYPE_FLOAT
+		return "FLOAT";
+	case FieldDescriptor::CPPTYPE_BOOL:// 7,     // TYPE_BOOL
+		return "TINYINT";
+	case FieldDescriptor::CPPTYPE_STRING:// 9,     // TYPE_STRING, TYPE_BYTES
+		if (em->vlength <= 0XFF) {
+			return "VARCHAR(255)"; //255
+		}
+		else if (em->vlength <= 0XFFFF) {
+			return "TEXT";//64K
+		}
+		else if (em->vlength <= 0XFFFFFF) {
+			return "MEDIUMTEXT"; //16MB
+		}
+		else {
+			return "LONGTEXT";//4GB
+		}
+	case FieldDescriptor::CPPTYPE_MESSAGE:// 10,    // TYPE_MESSAGE, TYPE_GROUP	}
+		return "MEDIUMBLOB";	//16MB
+								/*
+								if (zSize <= 0XFFFF){
+								return "BLOB";	//64K
+								}
+								else if(zSize <= 0XFFFFFF) {
+								return "MEDIUMBLOB";	//16MB
+								}
+								else {
+								return "LOGNGBLOB"; //4GB
+								}
+								*/
+	default:
+		return "MEDIUMBLOB";
+	}
+}
 const google::protobuf::Descriptor * GetMsgDescriptorImpl(MySQLMsgMetaImpl * impl, const std::string & name) {
 	return impl->protometa.GetMsgDesc(name.data());
 }
@@ -57,35 +104,34 @@ static inline int	CheckMsgValidImpl(MySQLMsgMetaImpl * impl, const std::string &
 	EXTMessageMeta meta;
 	const Descriptor * msg_desc = GetMsgDescriptorImpl(impl, name);
 	if (!msg_desc) {
-		cerr << "not found desc by name:" << name << endl;
+		GLOG_ERR("not found desc by name:%s", name.c_str());
 		return -1;
 	}
 	if (meta.AttachDesc(msg_desc)) {
 		//error parse from desc
-		cerr << "error parse from desc " << endl;
+		GLOG_ERR("error parse from desc name:%s", name.c_str());
 		return -1;
 	}
 	if (root) {
 		if (msg_desc->full_name().find(TABLE_NAME_POSTFIX) != string::npos) {
-			cerr << "forbidan the db msg type name include :" << TABLE_NAME_POSTFIX << " type:" <<
-				msg_desc->full_name() << endl;
+			GLOG_ERR("forbidan the db msg type name include :%s type:%s", TABLE_NAME_POSTFIX, msg_desc->full_name().c_str());
 			return -2;
 		}
-		if (meta.pks_name.empty()) {
+		if (meta.keys_names.empty()) {
 			//not found the pk def
-			cerr << "not found the pk def " << endl;
+			GLOG_ERR("not found the pk def !" );
 			return -2;
 		}
-		if (meta.pks_name.size() != meta.pks_fields.size()) {
-			cerr << "meta pks size not match " << endl;
+		if (meta.keys_names.size() != meta.keys_fields.size()) {
+			GLOG_ERR("meta pks size not match !" );
 			return -3;
 		}
 	}
 	//check field type
 	for (auto & sfm : meta.sub_fields) {
 		if (flatmode) {
-			if (sfm.field_desc->is_repeated() && sfm.z_count <= 0 ) {
-				cerr << "not db repeat field but no count define! error field :" << sfm.field_desc->name() << " count:" << sfm.f_count << endl;
+			if (sfm.field_desc->is_repeated() && sfm.vcount <= 0 ) {
+				GLOG_ERR("not db repeat field but no count define! error field :%s count:%s",sfm.field_desc->name().c_str(), sfm.count.c_str() );
 				return -4;
 			}
 			if (sfm.field_desc->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE) {
@@ -97,19 +143,19 @@ static inline int	CheckMsgValidImpl(MySQLMsgMetaImpl * impl, const std::string &
 		}
 		else {
 			if (sfm.field_desc->is_repeated()) {
-				cerr << "found a repeat field in not a flatmode :" << sfm.field_desc->name() << endl;
+				GLOG_ERR("found a repeat field in not a flatmode field:%s", sfm.field_desc->name().c_str());
 				return -6;
 			}
 		}
 	}
 	if (root) {
-		if (meta.m_divnum < 0) {
+		if (meta.divnum < 0) {
 			//must be a integer 
-			cerr << "meta divnum is error :" << meta.m_divnum << endl;
+			GLOG_ERR("meta divnum is error :%d", meta.divnum );
 			return -7;
 		}
-		if (!meta.m_divkey.empty() && !msg_desc->FindFieldByName(meta.m_divkey)) {
-			cerr << "msg :" << msg_desc->name() << " div key:" << meta.m_divkey << " not found !" << endl;
+		if (!meta.divkey.empty() && !msg_desc->FindFieldByName(meta.divkey)) {
+			GLOG_ERR("msg type %s div key:%s not found !" ,msg_desc->name().c_str(), meta.divkey.c_str());
 			return -8;
 		}
 	}
@@ -132,12 +178,12 @@ static inline const EXTMessageMeta * GetMsgMetaImpl(MySQLMsgMetaImpl * impl, con
 }
 int		MySQLMsgMeta::InitMeta(int n, const char ** path, int m, const char ** otherfiles) {
 	if (impl->protometa.Init(path, n, otherfiles, m)) {
-		cerr << "proto meta init error !" << endl;
+		GLOG_ERR("proto meta init error !" );
 		return -1;
 	}
 	auto filedesc = impl->protometa.LoadFile(impl->meta_file.c_str());
 	if (!filedesc) {
-		cerr << "proto meta load error !" << endl;
+		GLOG_ERR("proto meta load error !" );
 		return -2;
 	}
 	impl->package_name = filedesc->package();
@@ -171,9 +217,9 @@ static inline int32_t GetTableIdxImpl(MySQLMsgMetaImpl * impl, const google::pro
 	if (!pmeta) {
 		return -1;
 	}
-	if (pmeta->m_divnum > 0) {
-		uint64_t ullspkey = stoull(dcs::protobuf_msg_field_get_value(msg, pmeta->m_divkey, 0).c_str());
-		return ullspkey % pmeta->m_divnum;
+	if (pmeta->divnum > 0) {
+		uint64_t ullspkey = stoull(dcs::protobuf_msg_field_get_value(msg, pmeta->divkey, 0).c_str());
+		return ullspkey % pmeta->divnum;
 	}
 	return 0;
 }
@@ -198,7 +244,7 @@ static inline int   Escape(MySQLMsgMetaImpl * impl, std::string & result, const 
 			(char*)&impl->escaped_buffer[0], data, datalen);
 	}
 	else {
-		fprintf(stderr, "escaped string but msyql connection is null ! data:%p size:%d", data, datalen);
+		GLOG_ERR("escaped string but msyql connection is null ! data:%p size:%d", data, datalen);
 		result = "''";
 		return -1;
 	}
@@ -256,7 +302,7 @@ GetMsgFlatTableSQLFields(MySQLMsgMetaImpl * impl, const std::string & name, std:
 			sql += "`" + prefix + GetRepeatedFieldLengthName(impl,field.field_desc->name()) + "` ";
 			sql += "INT UNSIGNED NOT NULL";
 			sql += ",\n";		
-			for (int i ; i < field.z_count; ++i){
+			for (int i ; i < field.vcount; ++i){
 				//prefix
 				string field_prefix = prefix + GetRepeatedFieldName(impl, field.field_desc->name(), i);
 				if (field.field_desc->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE){
@@ -266,7 +312,7 @@ GetMsgFlatTableSQLFields(MySQLMsgMetaImpl * impl, const std::string & name, std:
 					}
 				}
 				else {
-					sql += "`" + field_prefix + "` " + field.GetMysqlFieldType();
+					sql += "`" + field_prefix + "` " + get_mysql_field_type_name(&field);
 					sql += " NOT NULL";
 					sql += ",\n";
 				}
@@ -280,7 +326,7 @@ GetMsgFlatTableSQLFields(MySQLMsgMetaImpl * impl, const std::string & name, std:
 			}
 		}
 		else {
-			sql += "`" + prefix + field.field_desc->name() + "` " + field.GetMysqlFieldType();
+			sql += "`" + prefix + field.field_desc->name() + "` " + get_mysql_field_type_name(&field);
 			sql += " NOT NULL";
 			sql += ",\n";
 		}
@@ -289,7 +335,7 @@ GetMsgFlatTableSQLFields(MySQLMsgMetaImpl * impl, const std::string & name, std:
 }
 //implementaion
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int			MySQLMsgMeta::CreateTables(const std::string & name, std::string & sql,int idx , bool flatmode){
+int			MySQLMsgMeta::CreateTables(std::string & sql, const std::string & name, int idx , bool flatmode){
 	auto * pmeta = GetMsgExMeta(name);
 	if (!pmeta) {
 		return -1;
@@ -304,7 +350,7 @@ int			MySQLMsgMeta::CreateTables(const std::string & name, std::string & sql,int
 		GetMsgFlatTableSQLFields(impl, name, sql, "");
 
 		string pks = "";
-		for (auto & pk : meta.pks_name)
+		for (auto & pk : meta.keys_names)
 		{
 			if (!pks.empty()) {
 				pks += ",";
@@ -317,8 +363,8 @@ int			MySQLMsgMeta::CreateTables(const std::string & name, std::string & sql,int
 		sql += pks + ")\n";
 		sql += ") ENGINE=InnoDB DEFAULT CHARSET utf8 COLLATE utf8_general_ci;";
 		string sql_real = "";
-		if (idx < 0 && meta.m_divnum > 0) {
-			for (int i = 0; i < meta.m_divnum; ++i) {
+		if (idx < 0 && meta.divnum > 0) {
+			for (int i = 0; i < meta.divnum; ++i) {
 				if (i != 0) {
 					sql_real += "\n";
 				}
@@ -337,12 +383,12 @@ int			MySQLMsgMeta::CreateTables(const std::string & name, std::string & sql,int
 		sql = "CREATE TABLE IF NOT EXISTS `" + table_name + "` (";
 		for (auto & field : meta.sub_fields)
 		{
-			sql += "`" + field.field_desc->name() + "` " + field.GetMysqlFieldType();
+			sql += "`" + field.field_desc->name() + "` " + get_mysql_field_type_name(&field);
 			sql += " NOT NULL";
 			sql += ",\n";
 		}
 		string pks = "";
-		for (auto & pk : meta.pks_name)
+		for (auto & pk : meta.keys_names)
 		{
 			if (!pks.empty()) {
 				pks += ",";
@@ -355,8 +401,8 @@ int			MySQLMsgMeta::CreateTables(const std::string & name, std::string & sql,int
 		sql += pks + ")\n";
 		sql += ") ENGINE=InnoDB DEFAULT CHARSET utf8 COLLATE utf8_general_ci;";
 		string sql_real = "";
-		if (idx < 0 && meta.m_divnum > 0) {
-			for (int i; i < meta.m_divnum; ++i) {
+		if (idx < 0 && meta.divnum > 0) {
+			for (int i; i < meta.divnum; ++i) {
 				if (i != 0) {
 					sql_real += "\n";
 				}
@@ -484,7 +530,7 @@ int			MySQLMsgMeta::Select(std::string & sql, const google::protobuf::Message & 
 		for (auto & kv : kvlist)
 		{
 			is_pk = 0;
-			for (auto & pk : pmeta->pks_name)
+			for (auto & pk : pmeta->keys_names)
 			{
 				if (kv.first == pk)
 				{
@@ -551,11 +597,10 @@ int			MySQLMsgMeta::Delete(std::string & sql, const google::protobuf::Message & 
 			GLOG_ERR("error msg sql get kv list!");
 			return ret;
 		}
-
 		for (auto & kv : kvlist)
 		{
 			is_pk = 0;
-			for (auto & pk : pmeta->pks_name)
+			for (auto & pk : pmeta->keys_names)
 			{
 				if (kv.first == pk)
 				{
@@ -581,15 +626,15 @@ int			MySQLMsgMeta::Delete(std::string & sql, const google::protobuf::Message & 
 	sql += ";";
 	return 0;
 }
-int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message & msg, bool flatmode )
+int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode )
 {
-	auto pmeta = GetMsgExMeta(msg.GetTypeName());
+	auto pmeta = GetMsgExMeta(msg_key.GetTypeName());
 	if (!pmeta) {
 		GLOG_ERR("not found the meta info get type name:%s", msg_key.GetTypeName().c_str());
 		return -1;
 	}
 	sql = "REPLACE INTO `";
-	sql += GetTableName(msg);
+	sql += GetTableName(msg_key);
 	sql += "` (";
 	MsgSQLKVList kvlist;
 	int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
@@ -620,9 +665,9 @@ int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message &
 	sql += ");";
 	return 0;
 }
-int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & msg, bool flatmode )
+int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode )
 {
-	auto pmeta = GetMsgExMeta(msg.GetTypeName());
+	auto pmeta = GetMsgExMeta(msg_key.GetTypeName());
 	if (!pmeta) {
 		GLOG_ERR("not found the meta info get type name:%s", msg_key.GetTypeName().c_str());
 		return -1;
@@ -636,10 +681,10 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 	[LIMIT row_count]
 	*/
 	sql = "UPDATE `";
-	sql += GetTableName(msg);
+	sql += GetTableName(msg_key);
 	sql += "` SET ";
 	MsgSQLKVList kvlist;
-	int ret = GetMsgSQLKVList(msg, kvlist, flatmode);
+	int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
 	if (ret) {
 		GLOG_ERR("error msg sql get kv list!");
 		return ret;
@@ -650,15 +695,15 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 	for (auto & kv : kvlist)
 	{
 		is_pk = 0;
-		for (int j = 0; j < (int)pmeta->pks_name.size(); ++j)
+		for (int j = 0; j < (int)pmeta->keys_names.size(); ++j)
 		{
-			if (kv.first == pmeta->pks_name[j])
+			if (kv.first == pmeta->keys_names[j])
 			{
 				is_pk = true;
 				break;
 			}
 		}
-		if (is_pk || kv.first == pmeta->m_autoinc)
+		if (is_pk || kv.first == pmeta->autoinc)
 		{
 			continue;
 		}
@@ -672,15 +717,15 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 		sql += " = ";
 		sql += kv.second;
 	}
-	if (!pmeta->m_autoinc.empty())
+	if (!pmeta->autoinc.empty())
 	{
 		if (is_first != 0)
 		{
 			sql += " , ";
 		}
-		sql += '`' + pmeta->m_autoinc + '`';
+		sql += '`' + pmeta->autoinc + '`';
 		sql += " = ";
-		sql += pmeta->m_autoinc;
+		sql += pmeta->autoinc;
 		sql += "+1";
 	}
 	//where
@@ -689,7 +734,7 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 	for (auto & kv : kvlist)
 	{
 		is_pk = 0;
-		for (auto & pk : pmeta->pks_name)
+		for (auto & pk : pmeta->keys_names)
 		{
 			if (kv.first == pk)
 			{
@@ -714,7 +759,7 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 	sql += ";";
 	return 0;
 }
-int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & msg, bool flatmode )
+int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode )
 {
 	auto pmeta = GetMsgExMeta(msg_key.GetTypeName());
 	if (!pmeta) {
@@ -724,7 +769,7 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 	//INSERT INTO order_(...)	values
 	//update order_()	set		where
 	sql = "INSERT INTO `";
-	sql += GetTableName(msg);
+	sql += GetTableName(msg_key);
 	sql += "` (";
 	MsgSQLKVList kvlist;
 	int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
@@ -742,13 +787,13 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 		sql += kvlist[i].first;
 		sql += "`";
 	}
-	if (!pmeta->m_autoinc.empty())
+	if (!pmeta->autoinc.empty())
 	{
 		if (!kvlist.empty()) {
 			sql += ",";
 		}
 		sql += "`";
-		sql += pmeta->m_autoinc;
+		sql += pmeta->autoinc;
 		sql += "`";
 	}
 	sql += ") VALUES (";
@@ -761,7 +806,7 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 		}
 		sql += kvlist[i].second;
 	}
-	if (!pmeta->m_autoinc.empty())
+	if (!pmeta->autoinc.empty())
 	{
 		sql += ",";
 		sql += "0";
@@ -771,10 +816,10 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 
 	return 0;
 }
-int        MySQLMsgMeta::Count(std::string & sql, const google::protobuf::Message & msg, const char * where_ )
+int        MySQLMsgMeta::Count(std::string & sql, const google::protobuf::Message & msg_key, const char * where_ )
 {
 	sql = "SELECT COUNT(*) FROM `";
-	sql += GetTableName(msg);
+	sql += GetTableName(msg_key);
 	sql += "` ";
 	if (where_ && where_[0]) {
 		sql += where_;
@@ -782,12 +827,12 @@ int        MySQLMsgMeta::Count(std::string & sql, const google::protobuf::Messag
 	sql += ";";
 	return 0;
 }
-int			MySQLMsgMeta::CreateTable(std::string & sql, const google::protobuf::Message & msg, bool flatmode ){
-	return CreateTables(sql, msg.GetTypeName(), -1, flatmode);
+int			MySQLMsgMeta::CreateTable(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode) {
+	return CreateTables(sql, msg_key.GetTypeName(), -1, flatmode);
 }
-int			MySQLMsgMeta::DropTable(std::string & sql, const google::protobuf::Message & msg){
+int			MySQLMsgMeta::DropTable(std::string & sql, const google::protobuf::Message & msg_key){
 	sql = "DROP TABLE IF EXISTS `";
-	sql += GetTableName(msg);
+	sql += GetTableName(msg_key);
 	sql += "`;";
 	return 0;
 }

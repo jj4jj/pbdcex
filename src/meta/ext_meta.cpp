@@ -1,9 +1,10 @@
-#include "ext_meta.h"
 #include "google/protobuf/compiler/importer.h"
 #include "google/protobuf/dynamic_message.h"
-#include "extensions_option.h"
+#include "google/protobuf/descriptor.h"
+#include "dcpots/base/logger.h"
+#include "extensions.pb.h"
+#include "ext_meta.h"
 
-std::stringstream error_stream;
 using namespace std;
 using namespace google::protobuf;
 
@@ -20,255 +21,124 @@ _strreplace(::std::string & ts, const ::std::string & p, const ::std::string & v
 	}
 }
 
-template<class D>
-static inline string descriptor_option(D desc, const string & opt);
-template<>
-inline string descriptor_option(const Descriptor * desc, const string & opt){
-	return proto_msg_opt(desc, opt.c_str());
-}
-template<>
-inline string descriptor_option(const FieldDescriptor * desc, const string & opt){
-	return proto_field_opt(desc, opt.c_str());
-}
-template<>
-inline string descriptor_option(const EnumValueDescriptor * desc, const string & opt){
-	return proto_enum_opt(desc, opt.c_str());
-}
-
-
-template<class D>
-int GetDescOption(string & value,D desc, const string & option){
-	value = descriptor_option(desc, option);
-	if (!value.empty()) {
+#define  _get_option(d,name) (d->options().GetExtension(name))
+template<class DescT>
+static int64_t			_get_enum_value(const char * name_or_number, DescT desc_) {
+	if (!name_or_number || !name_or_number[0]) {
 		return 0;
 	}
-	//error_stream << "info: not found the option:(" << option.c_str() << ") in desc:" << desc->name() << endl;
-	return -1;
+	const char * p = name_or_number;
+	long long v = strtoll(name_or_number, (char **)&p, 10);
+	if (p != name_or_number) {
+		return v;
+	}
+	auto f_desc = desc_->file();
+	auto ev_desc = f_desc->FindEnumValueByName(name_or_number);
+	if (ev_desc) {
+		return ev_desc->number();
+	}
+	return 0;
 }
-//////////////////////////////////////////////////////////////////////////////////////////////
-#define GET_DESC_STR_OPTION(opt_name, desc)	GetDescOption(opt_name, desc, #opt_name)
-#define GET_DESC_INT_OPTION(opt_name, desc)	do{string _value_opt_str;GetDescOption(_value_opt_str, desc, #opt_name);opt_name = std::stoi(_value_opt_str);}while(false)
-	
-///////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int	    EXTEnumValueMeta::AttachDesc(const EnumValueDescriptor * desc){
-	ev_desc = desc;
-	GET_DESC_STR_OPTION(e_cn, ev_desc);
-	GET_DESC_STR_OPTION(e_desc, ev_desc);
+	this->cname=_get_option(desc,::cname);
+	this->ev_desc = desc;
 	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 int	    EXTFieldMeta::AttachDesc(const FieldDescriptor * desc){
-	field_desc = desc;
-
-	GET_DESC_STR_OPTION(f_cn, field_desc);
-	GET_DESC_STR_OPTION(f_desc, field_desc);
-	GET_DESC_STR_OPTION(f_count, field_desc);
-	GET_DESC_STR_OPTION(f_length, field_desc);
-
-	z_length = EXTMetaUtil::GetEnumValue(f_length.c_str(), field_desc);
-	z_count = EXTMetaUtil::GetEnumValue(f_count.c_str(), field_desc);
+	this->alias = _get_option(desc,::alias);
+	this->desc = _get_option(desc,::desc);
+	this->count = _get_option(desc,::count);
+	this->length = _get_option(desc,::length);
+	this->ctype = _get_option(desc,::ctype);
+	//////////////////////////////////////////////////////////////
+	this->vlength = _get_enum_value(length.c_str(), field_desc);
+	this->vcount = _get_enum_value(count.c_str(), field_desc);
 	if (desc->is_repeated()){
 		//cout > 0
-		if (z_count <= 0){
-			error_stream << "the field: <" << desc->name() << "> is a repeated  , but not found options [f_count:"<< f_count <<"] or count is a error num value:" << z_count << endl;
+		if (this->vcount <= 0){
+			GLOG_ERR( "the field: <%s> is a repeated  , but not found options [f_count:%d] or count is a error num value:%d",
+				desc->name().c_str(),count.c_str(), vcount);
 			return -1;
 		}
 	}
 	if (desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING){
-		if (z_length <= 0){
-			error_stream << "the field: <" << desc->name() << "> is a string , but not found options [f_length:" << f_length << "] or length is a error num value:" << z_length << endl;
+		if (this->vlength <= 0){
+			GLOG_ERR("the field: <%s> is a string , but not found options [f_length:%s] or length is a error num value:%d",
+				desc->name().c_str(), this->length.c_str(), this->vlength);
 			return -2;
 		}
 	}
+	this->field_desc = desc;
 	return 0;
 }
-string EXTFieldMeta::GetScalarTypeName() const {
-	static const char * s_var_type_names[] = { "",
-		"int32_t", "int64_t", "uint32_t",
-		"uint64_t", "double", "float",
-		"bool", "invalidate type(enum)", "invalidate type(const char *)",
-		"invalidate type(message)","" };
-	const char * pszTypeName = s_var_type_names[field_desc->cpp_type()];
-	if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_ENUM){
-		return field_desc->enum_type()->name();
-	}
-	else if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE){
-		return EXTMetaUtil::GetStructName(field_desc->message_type());
-	}
-	else if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING) {
-		std::string type_name;
-		if (field_desc->type() == FieldDescriptor::TYPE_STRING) {
-			type_name = "string_t<";
-			type_name += f_length;
-			type_name += ">";
-		}
-		else {
-			type_name = "bytes_t<";
-			type_name += f_length;
-			type_name += ">";
-		}
-		return type_name;
-	}
-	return pszTypeName;
-}
-string EXTFieldMeta::GetTypeName() const {
-	string type_name = GetScalarTypeName().c_str();
-	/*
-	if (field_desc->cpp_type() == FieldDescriptor::CPPTYPE_STRING){
-	if (field_desc->type() == FieldDescriptor::TYPE_STRING){
-	type_name = "string_t<";
-	type_name += f_length;
-	type_name += ">";
-	}
-	else {
-	type_name = "bytes_t<";
-	type_name += f_length;
-	type_name += ">";
-	}
-	}
-	*/
-	if (z_count > 0) {
-		type_name = "array_t<" + type_name + ", " + f_count + ">";
-	}
-    return type_name;
-}
-string EXTFieldMeta::GetVarName()  const {
-	//static const char * type_prefix = ["", "i", "ll", "dw", "ull", "df", "f", "b", "en", "str", "st"];
-	//desc->camelcase_name();
-	string lc_name = field_desc->lowercase_name();
-	return lc_name;
-}
-std::string EXTFieldMeta::GetMysqlFieldType() const {
-	switch (field_desc->cpp_type()){
-	case FieldDescriptor::CPPTYPE_INT32:// 1,     // TYPE_INT32, TYPE_SINT32, TYPE_SFIXED32
-	case FieldDescriptor::CPPTYPE_ENUM:// 8,     // TYPE_ENUM
-		return "INT";
-	case FieldDescriptor::CPPTYPE_UINT32:// 3,     // TYPE_UINT32, TYPE_FIXED32
-		return "INT UNSIGNED";
-	case FieldDescriptor::CPPTYPE_INT64:// 2,     // TYPE_INT64, TYPE_SINT64, TYPE_SFIXED64
-		return "BIGINT";
-	case FieldDescriptor::CPPTYPE_UINT64:// 4,     // TYPE_UINT64, TYPE_FIXED64
-		return "BIGINT UNSIGNED";
-	case FieldDescriptor::CPPTYPE_DOUBLE:// 5,     // TYPE_DOUBLE
-		return "DOUBLE";
-	case FieldDescriptor::CPPTYPE_FLOAT:// 6,     // TYPE_FLOAT
-		return "FLOAT";
-	case FieldDescriptor::CPPTYPE_BOOL:// 7,     // TYPE_BOOL
-		return "TINYINT";
-	case FieldDescriptor::CPPTYPE_STRING:// 9,     // TYPE_STRING, TYPE_BYTES
-		if (z_length <= 0XFF){
-			return "VARCHAR(255)"; //255
-		}
-		else if (z_length <= 0XFFFF){
-			return "TEXT";//64K
-		}
-		else if (z_length <= 0XFFFFFF){
-			return "MEDIUMTEXT"; //16MB
-		}
-		else {
-			return "LONGTEXT";//4GB
-		}
-	case FieldDescriptor::CPPTYPE_MESSAGE:// 10,    // TYPE_MESSAGE, TYPE_GROUP	}
-		return "MEDIUMBLOB";	//16MB
-		/*
-		if (zSize <= 0XFFFF){
-			return "BLOB";	//64K
-		}
-		else if(zSize <= 0XFFFFFF) {
-			return "MEDIUMBLOB";	//16MB
-		}
-		else {
-			return "LOGNGBLOB"; //4GB
-		}
-		*/
-	default:
-		return "MEDIUMBLOB";
-	}
-}
 
 //////////////////////////////////////////////////////////////////////////
-std::string EXTMetaUtil::GetStructName(const google::protobuf::Descriptor * desc){
-	std::string sname = desc->name();
-	sname += "_ST";
-	return sname;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void	EXTMessageMeta::construct(){
-	m_divnum = 0;
-	pks_fields.clear();
-	sub_fields.clear();
-	pks_name.clear();
-}
-
-int	    EXTMessageMeta::AttachDesc(const Descriptor * desc){
-	msg_desc = desc;
-
-	GET_DESC_STR_OPTION(m_pks, msg_desc);
-	GET_DESC_STR_OPTION(m_divkey, msg_desc);
-	GET_DESC_INT_OPTION(m_divnum, msg_desc);
-	GET_DESC_STR_OPTION(m_cn, msg_desc);
-	GET_DESC_STR_OPTION(m_desc, msg_desc);
-	GET_DESC_STR_OPTION(m_relchk, msg_desc);
-	GET_DESC_STR_OPTION(m_autoinc, msg_desc);
-
-	////////////////////////////
-	int ret = ParseSubFields();
-    if(ret){
-        return ret;
-    }
-	ret = ParsePKS();
-
+static inline int     _parse_sub_fields(EXTMessageMeta * em) {
+	int ret = 0;
+	for (int i = 0; i < em->msg_desc->field_count(); ++i) {
+		EXTFieldMeta sfm;
+		ret = sfm.AttachDesc(em->msg_desc->field(i));
+		if (ret) {
+			GLOG_ERR("parse field errro in message %s:", em->msg_desc->full_name().c_str());
+			return ret;
+		}
+		em->sub_fields.push_back(sfm);
+	}
 	return ret;
 }
-int     EXTMessageMeta::ParseSubFields(){
-    int ret = 0;
-	for (int i = 0; i < msg_desc->field_count(); ++i){
-		EXTFieldMeta sfm;
-		ret = sfm.AttachDesc(msg_desc->field(i));
-        if(ret){
-			error_stream << "parse field errro in message :" << msg_desc->full_name() << endl;
-            return ret;
-        }
-		sub_fields.push_back(sfm);
-	}
-    return ret;
-}
-int		EXTMessageMeta::ParsePKS(){
+static inline int		_parse_keys_names(EXTMessageMeta * em) {
 	string::size_type bpos = 0, fpos = 0;
-	while (!m_pks.empty()){
-		fpos = m_pks.find(',', bpos);
+	while (!em->keys.empty()) {
+		fpos = em->keys.find(',', bpos);
 		string f_field_name = "";
-		if (fpos != string::npos && fpos > bpos){
-			f_field_name = m_pks.substr(bpos, fpos - bpos);
+		if (fpos != string::npos && fpos > bpos) {
+			f_field_name = em->keys.substr(bpos, fpos - bpos);
 		}
 		else {
-			if (fpos != bpos){
-				f_field_name = m_pks.substr(bpos);
+			if (fpos != bpos) {
+				f_field_name = em->keys.substr(bpos);
 			}
 		}
-		_strreplace(f_field_name," ","");
-		pks_name.push_back(f_field_name);
-		for (auto & suf : sub_fields){
-			if (suf.field_desc->name() == f_field_name){
-				pks_fields.push_back(&suf);
+		_strreplace(f_field_name, " ", "");
+		em->keys_names.push_back(f_field_name);
+		for (auto & suf : em->sub_fields) {
+			if (suf.field_desc->name() == f_field_name) {
+				em->keys_fields.push_back(&suf);
 			}
 		}
-		if (fpos == string::npos){
+		if (fpos == string::npos) {
 			break;
 		}
 		bpos = fpos + 1;
 	}
 	//all fields
-	if (pks_fields.empty()){
-		for (auto & suf : sub_fields){
-			pks_fields.push_back(&suf);
+	if (em->keys_fields.empty()) {
+		for (auto & suf : em->sub_fields) {
+			em->keys_fields.push_back(&suf);
 		}
 	}
 	return 0;
 }
-
+int	    EXTMessageMeta::AttachDesc(const Descriptor * desc){
+	this->keys = _get_option(desc,::keys);
+	this->divkey = _get_option(desc,::divkey);
+	this->divnum = _get_option(desc,::divnum);
+	this->note = _get_option(desc,::note);
+	this->relchk = _get_option(desc,::relchk);
+	this->autoinc = _get_option(desc,::autoinc);
+	this->msg_desc = desc;
+	////////////////////////////
+	int ret = _parse_sub_fields(this);
+    if(ret){
+        return ret;
+    }
+	ret = _parse_keys_names(this);
+	//////////////////////////////////////////////////////////////////////////
+	return ret;
+}
 /////////////////////////////////////////////////////////////////////////////////
 
 struct ProtoMetaErrorCollector : google::protobuf::compiler::MultiFileErrorCollector {

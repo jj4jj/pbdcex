@@ -1,15 +1,6 @@
 #pragma  once
-#include <algorithm>
-#include <unordered_map>
-#include <unordered_set>
-#include <iostream>
-#include <queue>
-#include <vector>
-#include <sstream>
 #include <string>
-#include <exception>
-#include <stdexcept>
-#include <cstdarg>
+#include <vector>
 namespace google {
 	namespace protobuf {
 		class Descriptor;
@@ -30,8 +21,7 @@ namespace google {
 //////////////////////////////////////////////////////////////////////////////////////////////
 struct EXTEnumValueMeta {
 	const google::protobuf::EnumValueDescriptor * ev_desc;
-	std::string e_cn;
-	std::string e_desc;
+	std::string cname;
 	int			AttachDesc(const google::protobuf::EnumValueDescriptor * fd);
 };
 
@@ -44,58 +34,32 @@ struct EXTEnumMeta {
 //////////////////////////////////////////////////////////////////////////////////////////////
 struct EXTFieldMeta {
 	const google::protobuf::FieldDescriptor * field_desc;
-	std::string f_count;
-	std::string f_length;
-	std::string f_cn;
-	std::string f_desc;
+	std::string count;
+	std::string length;
+	std::string alias;
+	std::string desc;
+	std::string ctype;
 	//////////////////////////////////
-	int32_t		z_length;
-	int32_t		z_count;
+	int32_t		vlength;
+	int32_t		vcount;
 
 	int			AttachDesc(const google::protobuf::FieldDescriptor * fd);
-	std::string GetScalarTypeName() const;
-	std::string GetTypeName() const;
-	std::string GetVarName() const;
-	std::string GetMysqlFieldType() const;
-};
-
-struct EXTMetaUtil {
-	static std::string		GetStructName(const google::protobuf::Descriptor * desc);
-	template<class DESC>
-	static int32_t			GetEnumValue(const char * name_or_number, DESC desc_){
-		if (!name_or_number || !name_or_number[0]){
-			return 0;
-		}
-		if (name_or_number[0] >= '0' && name_or_number[0] <= '9'){
-			return atoi(name_or_number);
-		}
-		auto f_desc = desc_->file();
-		auto ev_desc = f_desc->FindEnumValueByName(name_or_number);
-		if (ev_desc){
-			return ev_desc->number();
-		}
-		return 0;
-	}
 };
 
 struct EXTMessageMeta {
 	const google::protobuf::Descriptor * msg_desc;
-	std::string m_pks;
-	std::string m_divkey;
-	int32_t		m_divnum;
-	std::string m_cn;
-	std::string m_desc;
-	std::string m_relchk;
-	std::string m_autoinc;
-	std::vector<EXTFieldMeta*>		pks_fields;//if no , then all
+	std::string keys;
+	std::string divkey;
+	std::string note;
+	std::string relchk;
+	std::string autoinc;
+	int32_t		divnum{0};
+	/////////////////////////////////////////////////////////////
 	std::vector<EXTFieldMeta>		sub_fields;
-	std::vector<std::string>		pks_name;
+	std::vector<std::string>		keys_names;
+	std::vector<EXTFieldMeta*>		keys_fields;//if no , then all
 public:
 	int	    AttachDesc(const google::protobuf::Descriptor * desc);
-	void	construct();
-private:
-	int     ParseSubFields();
-	int		ParsePKS();
 };
 
 class EXTProtoMeta {
