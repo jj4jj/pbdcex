@@ -14,26 +14,25 @@ message HelloC {
     optional HelloB b = 2;
 }
 message HelloD {
-    option(m_pks)="f1";
+    option(keys)="f1";
     optional int32 f1 = 1;
     optional HelloB b = 2;
     optional HelloC c = 3;
-    repeated bytes d = 4[(f_length)="20",(f_count)="5"];
+    repeated bytes d = 4[(length)="20",(count)="5"];
 }
 message Hello {
-    option(m_cn)="ssss";
-    option(m_desc)="hello, world";
-    option(m_relchk)="";
-    option(m_pks)=" id , myworld ";
+    option(note)="hello, world";
+    option(relchk)="";
+    option(keys)=" id , myworld ";
 
-    optional int32 id = 1[(f_cn)="id",(f_desc)="id"];
-    repeated string myworld = 2[(f_length)="32",(f_count)="32"];
-    //repeated int32 roleids = 3[(f_count)="32"];
+    optional int32 id = 1[(alias)="id",(desc)="id"];
+    repeated string myworld = 2[(length)="32",(count)="32"];
+    //repeated int32 roleids = 3[(count)="32"];
     optional HelloD d = 4;
-    //repeated HelloD rd = 5[(f_count)="32"];
-    optional EnumDef_value   ev = 10;
-    optional string teststr = 11[(f_length)="25"];
-    optional bytes  testbs = 12[(f_length)="24"];
+    //repeated HelloD rd = 5[(count)="32"];
+    optional EnumDevalue   ev = 10;
+    optional string teststr = 11[(length)="25"];
+    optional bytes  testbs = 12[(length)="24"];
 	required int32 xxx1 =  19;
 	optional int32 xxx2 =  20;
 	optional int32 xxx3 =  21;
@@ -43,10 +42,10 @@ message Hello {
 	optional int32 xxx7 =  25;
 	optional int32 xxx8 =  27;
 	optional HelloD xx9 = 28;
-	repeated HelloD  testadss = 30[(f_count)="30"];
+	repeated HelloD  testadss = 30[(count)="30"];
 }
 
-enum EnumDef_value {
+enum EnumDevalue {
     EN_DEFAULT_VALUE = 0;//v
 	MAX_NAME_LENGTH = 1;//length
 	MAX_DB_SPLIT_NUM = 100;
@@ -58,26 +57,26 @@ message Award {
     optional uint32 param = 3;
 }
 message DBHello {
-	option(m_pks) = "pk1,pk2";
-	option(m_divkey) = "pk1";
-	option(m_divnum) = 100;
+	option(keys) = "pk1,pk2";
+	option(divkey) = "pk1";
+	option(divnum) = 100;
 	required uint64 pk1 = 1;
-	required string pk2 = 2[(f_length)="MAX_NAME_LENGTH"];
+	required string pk2 = 2[(length)="MAX_NAME_LENGTH"];
 	optional uint32	f1 = 3;
-	optional string f2 = 4[(f_length)="32"];
+	optional string f2 = 4[(length)="32"];
 	optional Hello	hello = 5;
 	optional bool	b4 = 6;
-	optional bytes bytesmsg = 7[(f_length)="MAX_BUFF_NUM"];
-    repeated uint32 repeat_test = 8[(f_count)="32"];
-    repeated Award repeat_msg = 9[(f_count)="5"];
-    optional EnumDef_value   ev = 10;
+	optional bytes bytesmsg = 7[(length)="MAX_BUFF_NUM"];
+    repeated uint32 repeat_test = 8[(count)="32"];
+    repeated Award repeat_msg = 9[(count)="5"];
+    optional EnumDevalue   ev = 10;
 }
 message DBPlayer {
-	option(m_pks) = "id";
-	option(m_divkey) = "id";
-	option(m_divnum) = 100;
+	option(keys) = "id";
+	option(divkey) = "id";
+	option(divnum) = 100;
 	required uint64 id = 1;
-	optional string name = 4[(f_length)="32"];
+	optional string name = 4[(length)="32"];
 	optional Hello	base = 12;
 	optional Hello	ext = 13;
 	optional Hello	bag = 5;
