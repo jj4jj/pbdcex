@@ -33,9 +33,9 @@ struct MySQLMsgMetaImpl {
 	EXTProtoMeta		protometa; //dynloading
 	MySQLMsgMetaCache	msg_meta_cache;
 };
-#define TABLE_NAME_POSTFIX		("_")
-#define TABLE_NAME_FLAT_FIELD_SEP		("__")
-#define TABLE_REPEATED_FIELD_POSTFIX	("$")
+#define TABLE_NAME_IDX_SEP		("_")
+#define TABLE_FLAT_FIELD_LAYER_SEP		("__")
+#define TABLE_FLAT_FIELD_IDX_SEP	("$")
 //////////////////////////////////////////////////////////////////////////
 MySQLMsgMeta::MySQLMsgMeta(const string & file, void * mysqlconn, size_t MAX_FIELD_BUFFER){
 	impl = new MySQLMsgMetaImpl();
@@ -113,8 +113,8 @@ static inline int	CheckMsgValidImpl(MySQLMsgMetaImpl * impl, const std::string &
 		return -1;
 	}
 	if (root) {
-		if (msg_desc->full_name().find(TABLE_NAME_POSTFIX) != string::npos) {
-			GLOG_ERR("forbidan the db msg type name include :%s type:%s", TABLE_NAME_POSTFIX, msg_desc->full_name().c_str());
+		if (msg_desc->full_name().find(TABLE_NAME_IDX_SEP) != string::npos) {
+			GLOG_ERR("forbidan the db msg type name include :%s type:%s", TABLE_NAME_IDX_SEP, msg_desc->full_name().c_str());
 			return -2;
 		}
 		if (meta.keys_names.empty()) {
@@ -192,7 +192,7 @@ int		MySQLMsgMeta::InitMeta(int n, const char ** path, int m, const char ** othe
 static inline string	GetMsgTableNameImpl(const std::string & name, int idx) {
 	string tbname = name;
 	if (idx > 0) {
-		tbname += TABLE_NAME_POSTFIX;
+		tbname += TABLE_NAME_IDX_SEP;
 		tbname += to_string(idx);
 	}
 	return tbname;
@@ -255,7 +255,7 @@ static inline int   Escape(MySQLMsgMetaImpl * impl, std::string & result, const 
 /////////////////////////////////////////////////////////////////////////
 static inline std::string		
 GetMsgTypeNameFromTableName(MySQLMsgMetaImpl * impl, const std::string & table_name) {
-	string::size_type deli = table_name.find_last_of(TABLE_NAME_POSTFIX);
+	string::size_type deli = table_name.find_last_of(TABLE_NAME_IDX_SEP);
 	string msg_type_name;
 	if (!impl->package_name.empty()) {
 		msg_type_name += impl->package_name;
@@ -272,14 +272,14 @@ GetMsgTypeNameFromTableName(MySQLMsgMetaImpl * impl, const std::string & table_n
 static inline string			
 GetRepeatedFieldLengthName(MySQLMsgMetaImpl * impl, const std::string & name){
 	string str_field_name = name;
-	str_field_name += TABLE_REPEATED_FIELD_POSTFIX;
+	str_field_name += TABLE_FLAT_FIELD_IDX_SEP;
 	str_field_name += "count";
 	return str_field_name;
 }
 static inline string			
 GetRepeatedFieldName(MySQLMsgMetaImpl * impl, const std::string & name, int idx){
 	string str_field_name = name;
-	str_field_name += TABLE_REPEATED_FIELD_POSTFIX;
+	str_field_name += TABLE_FLAT_FIELD_IDX_SEP;
 	str_field_name += to_string(idx);
 	return str_field_name;
 }
@@ -307,7 +307,7 @@ GetMsgFlatTableSQLFields(MySQLMsgMetaImpl * impl, const std::string & name, std:
 				string field_prefix = prefix + GetRepeatedFieldName(impl, field.field_desc->name(), i);
 				if (field.field_desc->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE){
 					if (GetMsgFlatTableSQLFields(impl, field.field_desc->message_type()->name(), sql,
-						field_prefix + TABLE_REPEATED_FIELD_POSTFIX)){
+						field_prefix + TABLE_FLAT_FIELD_IDX_SEP)){
 						return -2;
 					}
 				}
@@ -321,7 +321,7 @@ GetMsgFlatTableSQLFields(MySQLMsgMetaImpl * impl, const std::string & name, std:
 		else if (field.field_desc->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE){
 			//unflod
 			if (GetMsgFlatTableSQLFields(impl, field.field_desc->message_type()->name(), sql,
-				prefix + field.field_desc->name() + TABLE_REPEATED_FIELD_POSTFIX)){
+				prefix + field.field_desc->name() + TABLE_FLAT_FIELD_IDX_SEP)){
 				return -3;
 			}
 		}
@@ -445,7 +445,7 @@ static void fetch_msg_sql_kvlist(const string & name, const google::protobuf::Me
 	switch (evt) {
 		case BEGIN_MSG:
 			if (ctx->is_in_array) {
-				ctx->prefix.push_back(name+ TABLE_REPEATED_FIELD_POSTFIX +to_string(idx));
+				ctx->prefix.push_back(name+ TABLE_FLAT_FIELD_IDX_SEP +to_string(idx));
 			}
 			else {
 				ctx->prefix.push_back(name);
@@ -461,9 +461,9 @@ static void fetch_msg_sql_kvlist(const string & name, const google::protobuf::Me
 		ctx->is_in_array = false;
 		break;
 		case VISIT_VALUE:
-			strjoin(key,TABLE_NAME_FLAT_FIELD_SEP,ctx->prefix);
+			strjoin(key,TABLE_FLAT_FIELD_LAYER_SEP,ctx->prefix);
 			if (ctx->is_in_array) {
-				key += TABLE_REPEATED_FIELD_POSTFIX + to_string(idx);
+				key += TABLE_FLAT_FIELD_IDX_SEP + to_string(idx);
 			}
 			ctx->kvlist->push_back(make_pair(key, protobuf_msg_field_get_value(msg, name, idx)));
 		break;
@@ -486,6 +486,43 @@ static inline int GetMsgSQLKVList(const Message & msg, MsgSQLKVList & kvlist, bo
 	}
 	return 0;
 }
+//////////////////////////////////////////////////////////////////////////
+static inline int SetMsgSQLKVList(Message & msg, const MySQLRow & sql_row, bool flatmode) {
+	int ret = 0;
+	std::string error;
+	std::string	value;
+	value.reserve(1024 * 4);
+	if (flatmode) {
+		std::string	ppath = "";
+		for (int i = 0;i < sql_row.num_fields; ++i) {
+			ppath = sql_row.fields_name[i];
+			strreplace(ppath, TABLE_FLAT_FIELD_IDX_SEP, ":");
+			strreplace(ppath, TABLE_FLAT_FIELD_LAYER_SEP, ".");
+			if (ppath.find_last_of(":count") + 6 == (ppath.length())) {
+				continue;//count
+			}
+			value.assign(sql_row.row_data[i], sql_row.row_lengths[i]);
+			ret = protobuf_msg_field_path_set_value(msg, ppath, value, error);
+			if (ret) {
+				GLOG_ERR("msg field  path:%s set error:%d (%s)!", ppath.c_str(), ret, error.c_str());
+				return ret;
+			}
+		}
+	}
+	else {
+		for (int i = 0;i < sql_row.num_fields; ++i) {
+			value.assign(sql_row.row_data[i], sql_row.row_lengths[i]);
+			ret = protobuf_msg_field_set_value(msg, sql_row.fields_name[i], 
+				0, value, error);
+			if (ret) {
+				GLOG_ERR("msg field path:%s set error:%d (%s)!", sql_row.fields_name[i], ret, error.c_str());
+				return ret;
+			}
+		}
+	}
+	return 0;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 int			MySQLMsgMeta::Select(std::string & sql, const google::protobuf::Message & msg_key, std::vector<std::string> * fields ,
 							const char * where_ , int offset , int limit , const char * orderby ,
@@ -837,9 +874,16 @@ int			MySQLMsgMeta::DropTable(std::string & sql, const google::protobuf::Message
 	return 0;
 }
 
-
-
-
-
-
+int			MySQLMsgMeta::GetMsgFromSQLRow(google::protobuf::Message & msg, const MySQLRow &  sql_row, bool flatmode) {
+	if (sql_row.num_fields <= 0) {
+		//error number fields
+		GLOG_ERR("errror number fields:%d " , sql_row.num_fields);
+		return -1;
+	}
+	int ret = SetMsgSQLKVList(msg, sql_row, flatmode);
+	if (ret) {
+		GLOG_ERR("set msg from sql table:%s field value error !", sql_row.table_name);
+	}
+	return 0;
+}
 

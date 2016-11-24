@@ -1,5 +1,6 @@
 #pragma once
 struct MySQLMsgMetaImpl;
+struct MySQLRow;
 struct MySQLMsgMeta {
     int					InitMeta(int n = 0, const char ** path = nullptr, int m = 0, const char ** otherfiles = nullptr);
 	int					CheckMsgValid(const std::string & name, bool root = true, bool flatmode = false);
@@ -26,6 +27,10 @@ public:
     int                 Count(std::string & sql, const google::protobuf::Message & msg, const char * where_ = nullptr);
     int				    CreateTable(std::string & sql, const google::protobuf::Message & msg, bool flatmode = false);
     int				    DropTable(std::string & sql, const google::protobuf::Message & msg);
+
+public:
+	int					GetMsgFromSQLRow(google::protobuf::Message & msg, const MySQLRow &  row, bool faltmode = false);
+
 
 public:
 	MySQLMsgMeta(const std::string & file, void * mysqlconn, size_t MAX_FIELD_BUFFER = 1024 * 1024);

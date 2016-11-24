@@ -4,7 +4,9 @@
 #include <iostream>
 #include "time.h"
 #include "sys/time.h"
-
+#include "iostream"
+#include "../src/generater/mysql_gen.h"
+using namespace std;
 int main(){
     Hello_ST hs;
     hs.construct();
@@ -136,6 +138,19 @@ int main(){
 		tv2.tv_sec - tv.tv_sec, tv2.tv_usec - tv.tv_usec,
 	upd.ShortDebugString().c_str(), hst3.debugs(ds3), hst3==hst2);
 
+
+	//////////////////////////////////////////////////////////////////////////
+	cout << "--------------------------------------------------------------------" << endl;
+	MySQLMsgMeta	msmm("proto/test.proto", 0);
+	const char * p[2]{"/usr/local/include","proto"}, *m[1];
+	cout << msmm.InitMeta(2, p) << endl;
+
+	cout << msmm.CheckMsgValid("Hello") << endl;
+
+	Hello hst2333;
+	std::string sql;
+	msmm.Select(sql, hst2333);
+	cout << sql << endl;
 
     return 0;
 }
