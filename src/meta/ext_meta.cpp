@@ -103,6 +103,7 @@ static inline int		_parse_keys_names(EXTMessageMeta * em) {
 			}
 		}
 		_strreplace(f_field_name, " ", "");
+		_strreplace(f_field_name, "\t", "");
 		em->keys_names.push_back(f_field_name);
 		for (auto & suf : em->sub_fields) {
 			if (suf.field_desc->name() == f_field_name) {

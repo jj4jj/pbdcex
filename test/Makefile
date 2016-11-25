@@ -2,9 +2,9 @@ clean:
 	rm -f htest
 
 htest: test.cpp proto/test.pb.h test.cex.hpp
-	g++ test.cpp -g3 -I. -I../include  -Iproto proto/test.pb.cc proto/extensions.pb.cc ${protoi} -o htest ${protol} -pthread --std=c++11
+	g++ test.cpp -g3 -I. -I../include  -I../include/pbdcex -Iproto proto/test.pb.cc ${protoi} -o htest ${protol} -pthread --std=c++11 -L../lib -L../../../dcpots/lib -ldcbase -ldcutil-drs -lpbjson -lmysqlclient -lpbdcex -L../lib -L../../dcpots/lib -lpbdcex -ldcutil-drs -lpbjson -ldcbase -lmysqlclient -ldl
 
-proto/test.pb.h: proto/test.proto ../include/pbdcex/extensions.proto
+proto/test.pb.h: proto/test.proto
 	${protoc} $^ -Iproto -I../include/pbdcex -I/usr/local/include ${protoi} --cpp_out=proto
 
 test.cex.hpp: proto/test.proto

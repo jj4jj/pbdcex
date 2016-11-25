@@ -1,6 +1,15 @@
 #pragma once
+#include <string>
+#include <vector>
 struct MySQLMsgMetaImpl;
 struct MySQLRow;
+struct EXTMessageMeta;
+namespace google {
+	namespace protobuf {
+		class Descriptor;
+		class Messsage;
+	}
+}
 struct MySQLMsgMeta {
     int					InitMeta(int n = 0, const char ** path = nullptr, int m = 0, const char ** otherfiles = nullptr);
 	int					CheckMsgValid(const std::string & name, bool root = true, bool flatmode = false);
@@ -29,7 +38,7 @@ public:
     int				    DropTable(std::string & sql, const google::protobuf::Message & msg);
 
 public:
-	int					GetMsgFromSQLRow(google::protobuf::Message & msg, const MySQLRow &  row, bool faltmode = false);
+	int					GetMsgFromSQLRow(google::protobuf::Message & msg, const MySQLRow &  row);
 
 
 public:

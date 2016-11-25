@@ -47,8 +47,9 @@ int main(int argc, const char ** argv){
             cout << " , ";
         }
 		messages[i] = cmdline.getoptstr("message", i);
-		cout << messages[i] << endl;
+		cout << messages[i];
 	}
+	cout << endl;
     pbdcex_config_t config;
     for (int i = 0; i < ninc_path; ++i){
         config.meta.paths.push_back(includes_path[i]);

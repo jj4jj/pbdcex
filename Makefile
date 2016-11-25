@@ -1,4 +1,4 @@
-src/libpbdcex.a: ./src/pbdcex.cpp ./src/pbdcex.h ./src/generater/cpp_gen.cpp ./src/generater/mysql_gen.cpp
+src/libpbdcex.a: ./src/pbdcex.cpp ./src/pbdcex.h ./src/generater/cpp_gen.cpp ./src/generater/mysql_gen.cpp ./src/meta/*.cpp ./src/meta/*.cc
 	cd src && make libpbdcex.a
 src/pbdcexer: ./src/pbdcexer.cpp src/libpbdcex.a
 	cd src && make pbdcexer
@@ -22,6 +22,7 @@ install: src/libpbdcex.a src/pbdcexer
 	cp -f src/pbdcex.core.hpp include/pbdcex/
 	cp -f src/generater/pbdcex.core.hxx include/pbdcex/
 	cp -f src/meta/extensions.proto include/pbdcex/
+	cp -f src/meta/extensions.pb.h include/pbdcex/
 	cp -f src/pbdcex.h include/pbdcex/
 	cp -f src/meta/ext_meta.h include/pbdcex/meta/
 	cp -f src/generater/cpp_gen.h include/pbdcex/generater/

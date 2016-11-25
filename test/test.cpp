@@ -5,7 +5,8 @@
 #include "time.h"
 #include "sys/time.h"
 #include "iostream"
-#include "../src/generater/mysql_gen.h"
+#include "pbdcex/meta/ext_meta.h"
+#include "pbdcex/generater/mysql_gen.h"
 using namespace std;
 int main(){
     Hello_ST hs;
