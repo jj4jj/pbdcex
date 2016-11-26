@@ -2,7 +2,7 @@ XCTEMP=../../cxxtemplates
 DCPOTS=../../dcpots
 INCLUDE=../../
 pbdcexer: pbdcexer.cpp libpbdcex.a ${XCTEMP}/lib/libxctmp.a ${DCPOTS}/lib/libdcutil-drs.a  ${DCPOTS}/lib/libpbjson.a ${DCPOTS}/lib/libdcbase.a  
-	g++ -o $@ $^ -std=c++11 -I${INCLUDE} ${protoi} -static ${protol} -pthread -ldl -g3
+	g++ -o $@ $^ -std=c++11 -I${INCLUDE} ${protoi} -O2 ${protol} -pthread -ldl -g -lmysqlclient
 
 clean:
 	rm -f pbdcexer

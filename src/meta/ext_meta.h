@@ -27,7 +27,7 @@ struct EXTEnumValueMeta {
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 struct EXTEnumMeta {
-	const google::protobuf::EnumDescriptor * ev_desc;
+	const google::protobuf::EnumDescriptor * enm_desc;
 };
 
 
@@ -43,7 +43,12 @@ struct EXTFieldMeta {
 	int32_t		vlength;
 	int32_t		vcount;
 
+public:
 	int			AttachDesc(const google::protobuf::FieldDescriptor * fd);
+
+public:
+	static int64_t	GetEnumValue(const char * name_or_number, const ::google::protobuf::FieldDescriptor * desc_);
+
 };
 
 struct EXTMessageMeta {

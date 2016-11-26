@@ -22,8 +22,15 @@ _strreplace(::std::string & ts, const ::std::string & p, const ::std::string & v
 }
 
 #define  _get_option(d,name) (d->options().GetExtension(name))
-template<class DescT>
-static int64_t			_get_enum_value(const char * name_or_number, DescT desc_) {
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int	    EXTEnumValueMeta::AttachDesc(const EnumValueDescriptor * desc){
+	this->cname=_get_option(desc,::cname);
+	this->ev_desc = desc;
+	return 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+int64_t	EXTFieldMeta::GetEnumValue(const char * name_or_number, const ::google::protobuf::FieldDescriptor * desc_){
 	if (!name_or_number || !name_or_number[0]) {
 		return 0;
 	}
@@ -39,14 +46,7 @@ static int64_t			_get_enum_value(const char * name_or_number, DescT desc_) {
 	}
 	return 0;
 }
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int	    EXTEnumValueMeta::AttachDesc(const EnumValueDescriptor * desc){
-	this->cname=_get_option(desc,::cname);
-	this->ev_desc = desc;
-	return 0;
-}
 
-///////////////////////////////////////////////////////////////////////////////////////////////
 int	    EXTFieldMeta::AttachDesc(const FieldDescriptor * desc){
 	this->alias = _get_option(desc,::alias);
 	this->desc = _get_option(desc,::desc);
@@ -54,8 +54,8 @@ int	    EXTFieldMeta::AttachDesc(const FieldDescriptor * desc){
 	this->length = _get_option(desc,::length);
 	this->ctype = _get_option(desc,::ctype);
 	//////////////////////////////////////////////////////////////
-	this->vlength = _get_enum_value(length.c_str(), field_desc);
-	this->vcount = _get_enum_value(count.c_str(), field_desc);
+	this->vlength = GetEnumValue(length.c_str(), field_desc);
+	this->vcount = GetEnumValue(count.c_str(), field_desc);
 	if (desc->is_repeated()){
 		//cout > 0
 		if (this->vcount <= 0){

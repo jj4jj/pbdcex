@@ -16,7 +16,7 @@ static inline std::string cpp_get_scalar_type_name(EXTFieldMeta * em) {
 		"uint64_t", "double", "float",
 		"bool", "invalidate type(enum)", "invalidate type(const char *)",
 		"invalidate type(message)","" };
-	const char * pszTypeName = s_var_type_names[em->field_desc->cpp_type()];
+	const char * cpp_type_name = s_var_type_names[em->field_desc->cpp_type()];
 	if (em->field_desc->cpp_type() == FieldDescriptor::CPPTYPE_ENUM) {
 		return em->field_desc->enum_type()->name();
 	}
@@ -37,7 +37,7 @@ static inline std::string cpp_get_scalar_type_name(EXTFieldMeta * em) {
 		}
 		return type_name;
 	}
-	return pszTypeName;
+	return cpp_type_name;
 }
 static inline string cpp_get_type_name(EXTFieldMeta * em)  {
 	string type_name = cpp_get_scalar_type_name(em).c_str();

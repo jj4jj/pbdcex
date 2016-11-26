@@ -392,7 +392,56 @@ struct fetch_msg_sql_kvlist_ctx {
 	MsgSQLKVList  * kvlist{nullptr};
 	vector<string>	prefix;
 	bool			is_in_array{false};
+	std::string		buffer;
+	MySQLMsgMetaImpl * impl;
 };
+static inline const std::string & msyql_field_value_ref_protobuf(MySQLMsgMetaImpl *impl, std::string & result, const std::string & v, const FieldDescriptor * fdsc) {
+	int ret = 0;
+	switch (fdsc->cpp_type()) {
+		case FieldDescriptor::CPPTYPE_INT32 :     // TYPE_INT32, TYPE_SINT32, TYPE_SFIXED32
+		case FieldDescriptor::CPPTYPE_INT64 :     // TYPE_INT64, TYPE_SINT64, TYPE_SFIXED64
+		case FieldDescriptor::CPPTYPE_UINT32 :     // TYPE_UINT32, TYPE_FIXED32
+		case FieldDescriptor::CPPTYPE_UINT64 :     // TYPE_UINT64, TYPE_FIXED64
+		case FieldDescriptor::CPPTYPE_DOUBLE :     // TYPE_DOUBLE
+		case FieldDescriptor::CPPTYPE_FLOAT :     // TYPE_FLOAT
+		return v;
+		case FieldDescriptor::CPPTYPE_BOOL :     // TYPE_BOOL
+			if (v == "true" || v == "1" || v == "yes" || v == "1") {
+				result = "1";
+			}
+			else {
+				result = "0";
+			}
+			return result;
+		case FieldDescriptor::CPPTYPE_ENUM:     // TYPE_ENUM
+			if (dcs::strisint(v)) {
+				return v;
+			}
+			else {
+				auto fxc = fdsc->file();
+				auto ev_desc = fxc->FindEnumValueByName(v);
+				if (ev_desc) {
+					result = to_string(ev_desc->number());
+				}
+				else {
+					GLOG_ERR("not found enum def value:%s for field:%s", v.c_str(), fdsc->full_name().c_str());
+					result = "0";
+				}
+				return result;
+			}
+		break;
+		case FieldDescriptor::CPPTYPE_STRING:     // TYPE_STRING, TYPE_BYTES
+		case FieldDescriptor::CPPTYPE_MESSAGE:    // TYPE_MESSAGE, TYPE_GROUP
+		ret = Escape(impl, result, v.data(), v.length());
+		if(ret){
+			GLOG_ERR("escape field:%s error:%d !", fdsc->full_name().c_str(), ret);
+		}		
+		return result;
+		break;
+		default:
+		return v;
+	}
+}
 static void fetch_msg_sql_kvlist(const string & name, const google::protobuf::Message & msg, int idx, int level, void *ud, protobuf_sax_event_type evt) {
 	fetch_msg_sql_kvlist_ctx	* ctx = (fetch_msg_sql_kvlist_ctx*)ud;
 	string key;
@@ -419,14 +468,17 @@ static void fetch_msg_sql_kvlist(const string & name, const google::protobuf::Me
 			if (ctx->is_in_array) {
 				key += TABLE_FLAT_FIELD_IDX_SEP + to_string(idx);
 			}
-			ctx->kvlist->push_back(make_pair(key, protobuf_msg_field_get_value(msg, name, idx)));
+			ctx->kvlist->push_back(make_pair(key, 
+					msyql_field_value_ref_protobuf(ctx->impl, ctx->buffer, 
+					protobuf_msg_field_get_value(msg, name, idx), msg.GetDescriptor()->FindFieldByName(name))));
 		break;
 	}
 }
 
-static inline int GetMsgSQLKVList(const Message & msg, MsgSQLKVList & kvlist, bool flatmode) {
+static inline int GetMsgSQLKVList(MySQLMsgMetaImpl * impl, const Message & msg, MsgSQLKVList & kvlist, bool flatmode) {
 	fetch_msg_sql_kvlist_ctx ctx;
 	ctx.kvlist = &kvlist;
+	ctx.impl = impl;
 	if (flatmode) {
 		protobuf_msg_sax("", msg, fetch_msg_sql_kvlist, &ctx, 0, false);
 	}
@@ -439,12 +491,15 @@ static inline int GetMsgSQLKVList(const Message & msg, MsgSQLKVList & kvlist, bo
 					kvlist.push_back(make_pair(GetRepeatedFieldLengthName(field->name()), std::to_string(xc)));
 					for (int x = 0; x < xc; ++x) {
 						kvlist.push_back(make_pair(GetRepeatedFieldName(field->name(), x),
-							protobuf_msg_field_get_value(msg, field->name(), x)));
+							msyql_field_value_ref_protobuf(impl, ctx.buffer,
+							protobuf_msg_field_get_value(msg, field->name(), x), field)));
 					}
 				}
 			}
 			else if (msg.GetReflection()->HasField(msg, field)) {
-				kvlist.push_back(make_pair(field->name(), protobuf_msg_field_get_value(msg, field->name(), -1)));
+				kvlist.push_back(make_pair(field->name(), 
+						msyql_field_value_ref_protobuf(impl, ctx.buffer,
+						protobuf_msg_field_get_value(msg, field->name(), -1), field)));
 			}
 		}
 	}
@@ -510,36 +565,36 @@ int			MySQLMsgMeta::Select(std::string & sql, const google::protobuf::Message & 
 		int is_first = 0;
 		int is_pk = 0;
 		MsgSQLKVList kvlist;
-		int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
+		int ret = GetMsgSQLKVList(impl, msg_key, kvlist, flatmode);
 		if (ret) {
 			GLOG_ERR("error msg sql get kv list!");
 			return ret;
 		}
-		for (auto & kv : kvlist)
-		{
-			is_pk = 0;
-			for (auto & pk : pmeta->keys_names)
-			{
-				if (kv.first == pk)
-				{
-					is_pk = true;
-					break;
+		if (kvlist.empty()) {
+			sql += " TRUE ";
+		}
+		else {
+			for (auto & kv : kvlist){
+				is_pk = 0;
+				for (auto & pk : pmeta->keys_names){
+					if (kv.first == pk){
+						is_pk = true;
+						break;
+					}
 				}
+				if (!is_pk){
+					continue;
+				}
+				if (is_first != 0){
+					sql += " AND ";
+				}
+				is_first = 1;
+				sql += "`";
+				sql += kv.first;
+				sql += "`";
+				sql += " = ";
+				sql += kv.second;
 			}
-			if (!is_pk)
-			{
-				continue;
-			}
-			if (is_first != 0)
-			{
-				sql += " AND ";
-			}
-			is_first = 1;
-			sql += "`";
-			sql += kv.first;
-			sql += "`";
-			sql += " = ";
-			sql += kv.second;
 		}
 	}
 	//ORDER BY todo
@@ -580,7 +635,7 @@ int			MySQLMsgMeta::Delete(std::string & sql, const google::protobuf::Message & 
 		int is_first = 0;
 		int is_pk = 0;
 		MsgSQLKVList kvlist;
-		int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
+		int ret = GetMsgSQLKVList(impl, msg_key, kvlist, flatmode);
 		if (ret) {
 			GLOG_ERR("error msg sql get kv list!");
 			return ret;
@@ -625,7 +680,7 @@ int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message &
 	sql += GetTableName(msg_key);
 	sql += "` (";
 	MsgSQLKVList kvlist;
-	int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
+	int ret = GetMsgSQLKVList(impl, msg_key, kvlist, flatmode);
 	if (ret) {
 		GLOG_ERR("error msg sql get kv list!");
 		return ret;
@@ -672,7 +727,7 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 	sql += GetTableName(msg_key);
 	sql += "` SET ";
 	MsgSQLKVList kvlist;
-	int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
+	int ret = GetMsgSQLKVList(impl, msg_key, kvlist, flatmode);
 	if (ret) {
 		GLOG_ERR("error msg sql get kv list!");
 		return ret;
@@ -760,7 +815,7 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 	sql += GetTableName(msg_key);
 	sql += "` (";
 	MsgSQLKVList kvlist;
-	int ret = GetMsgSQLKVList(msg_key, kvlist, flatmode);
+	int ret = GetMsgSQLKVList(impl, msg_key, kvlist, flatmode);
 	if (ret) {
 		GLOG_ERR("error msg sql get kv list!");
 		return ret;

@@ -148,7 +148,9 @@ int main(){
 
 	cout << msmm.CheckMsgValid("Hello") << endl;
 
+	Hello_ST hsttt;
 	Hello hst2333;
+	hst2333.set_id(2245);
 	std::string sql;
 	msmm.Select(sql, hst2333);
 	cout << sql << endl;
