@@ -151,6 +151,10 @@ int main(){
 	Hello_ST hsttt;
 	Hello hst2333;
 	hst2333.set_id(2245);
+	hst2333.set_xxx1(111);
+	hst2333.set_ev(EN_DEFAULT_VALUE);
+	hst2333.set_teststr("vvvvvvvvvsf");
+	hst2333.add_myworld("myworld", 5);
 	std::string sql;
 	msmm.Select(sql, hst2333);
 	cout << sql << endl;

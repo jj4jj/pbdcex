@@ -10,6 +10,14 @@ namespace google {
 		class Messsage;
 	}
 }
+struct st_mysql_field;
+struct MySQLRow {
+	const char *				table_name;
+	const char * *				fields_name;
+	int							num_fields;
+	const char **				row_data;
+	unsigned long *				row_lengths;
+};
 struct MySQLMsgMeta {
     int					InitMeta(int n = 0, const char ** path = nullptr, int m = 0, const char ** otherfiles = nullptr);
 	int					CheckMsgValid(const std::string & name, bool root = true, bool flatmode = false);
@@ -39,6 +47,7 @@ public:
 
 public:
 	int					GetMsgFromSQLRow(google::protobuf::Message & msg, const MySQLRow &  row);
+	int					Escape(std::string & result, const char * data, int datalen);
 
 
 public:

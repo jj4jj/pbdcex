@@ -5,24 +5,13 @@
 #include <unordered_map>
 #include "dcpots/base/logger.h"
 #include "dcpots/utility/drs/dcproto.h"
-
-
 //////////////////////////////////////////////////////////////////////////
 #include "mysql_gen.h"
 //////////////////////////////////////////////////////////////////////////
-
 using namespace std;
 using namespace dcs;
 using namespace google::protobuf;
 ///////////////////////////////////////////////////////////////////////////////////////////
-struct st_mysql_field;
-struct MySQLRow {
-	const char *				table_name;
-	const char * *				fields_name;
-	int							num_fields;
-	const char **				row_data;
-	unsigned long *				row_lengths;
-};
 typedef std::unordered_map<std::string, EXTMessageMeta>		MySQLMsgMetaCache;
 struct MySQLMsgMetaImpl {
 	std::string			meta_file;
@@ -47,7 +36,6 @@ MySQLMsgMeta::MySQLMsgMeta(const string & file, void * mysqlconn, size_t MAX_FIE
 MySQLMsgMeta::~MySQLMsgMeta() {
 	if(impl){delete impl; impl = nullptr;}
 }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////implementation
 static inline std::string get_mysql_field_type_name(const EXTFieldMeta * em) {
@@ -81,18 +69,7 @@ static inline std::string get_mysql_field_type_name(const EXTFieldMeta * em) {
 			return "LONGTEXT";//4GB
 		}
 	case FieldDescriptor::CPPTYPE_MESSAGE:// 10,    // TYPE_MESSAGE, TYPE_GROUP	}
-		return "MEDIUMBLOB";	//16MB
-		/*
-		if (zSize <= 0XFFFF){
-		return "BLOB";	//64K
-		}
-		else if(zSize <= 0XFFFFFF) {
-		return "MEDIUMBLOB";	//16MB
-		}
-		else {
-		return "LOGNGBLOB"; //4GB
-		}
-		*/
+		return "MEDIUMBLOB";	//16MB ,"LOGNGBLOB"; //4GB
 	default:
 		return "MEDIUMBLOB";
 	}
@@ -198,15 +175,10 @@ static inline string	GetMsgTableNameImpl(const std::string & name, int idx) {
 	return tbname;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
-//////declarations //////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////
-const google::protobuf::Descriptor *
-MySQLMsgMeta::GetMsgDescriptor(const std::string & name) const {
+const google::protobuf::Descriptor * MySQLMsgMeta::GetMsgDescriptor(const std::string & name) const {
 	return GetMsgDescriptorImpl(impl, name);
 }
-const EXTMessageMeta *
-MySQLMsgMeta::GetMsgExMeta(const std::string & name) {
+const EXTMessageMeta * MySQLMsgMeta::GetMsgExMeta(const std::string & name) {
 	return GetMsgMetaImpl(impl, name);
 }
 int		MySQLMsgMeta::CheckMsgValid(const std::string & name, bool root, bool flatmode) {
@@ -231,20 +203,77 @@ static inline std::string GetTableNameImpl(MySQLMsgMetaImpl * impl, const string
 	}
 	return tb_name;
 }
-static inline int   Escape(MySQLMsgMetaImpl * impl, std::string & result, const char * data, int datalen) {
+static inline void _custom_string_escape(char * buffer, const char * data, int idata){	
+	/*
+	\0	An ASCII NUL(X'00') character
+	\'	A single quote (') character
+	\"	A double quote (") character
+	\b	A backspace character
+	\n	A newline(linefeed) character
+	\r	A carriage return character
+	\t	A tab character
+	\Z	ASCII 26 (Control + Z); see note following the table
+	\\	A backslash(\) character
+	\%	A % character; see note following the table
+	\_	A _ character; see note following the table
+	*/
+	for (int i = 0;i < idata; ++i) {
+		switch (data[i]) {
+			case '\'':
+			case '"':
+			case '\\':
+			case '%':
+			case '_':
+			*(buffer++) = '\\';
+			*(buffer++) = data[i];
+			break;
+			///////////////////
+			case 0: //'\0'
+			*(buffer++) = '\\';
+			*(buffer++) = '0';
+			break;
+			case '\b':
+			*(buffer++) = '\\';
+			*(buffer++) = 'b';
+			break;
+			case '\n':
+			*(buffer++) = '\\';
+			*(buffer++) = 'n';
+			break;
+			case '\r':
+			*(buffer++) = '\\';
+			*(buffer++) = 'r';
+			break;
+			case '\t':
+			*(buffer++) = '\\';
+			*(buffer++) = 't';
+			break;
+			case 26: //'\Z':
+			*(buffer++) = '\\';
+			*(buffer++) = 'Z';
+			break;
+			default:
+			*(buffer++) = data[i];
+			break;
+		}
+	}
+}
+static inline int   EscapeImpl(MySQLMsgMetaImpl * impl, std::string & result, const char * data, int datalen) {
 	if (datalen <= 0) {
 		result = "''";
 		return 0;
 	}
 	/////////////////////////////////////////    
 	result = "'";
+	impl->escaped_buffer.reserve(2 * datalen + 1);
 	if (impl->mysql) {
 		memset((char*)&impl->escaped_buffer[0], 0, 2 * datalen + 1);
 		mysql_real_escape_string((st_mysql*)impl->mysql,
 			(char*)&impl->escaped_buffer[0], data, datalen);
 	}
 	else {
-		GLOG_ERR("escaped string but msyql connection is null ! data:%p size:%d", data, datalen);
+		GLOG_WAR("escaped string but msyql connection is null using custom escaping ! data:%p size:%d", data, datalen);
+		_custom_string_escape((char*)&impl->escaped_buffer[0], data, datalen);
 		result = "''";
 		return -1;
 	}
@@ -432,9 +461,9 @@ static inline const std::string & msyql_field_value_ref_protobuf(MySQLMsgMetaImp
 		break;
 		case FieldDescriptor::CPPTYPE_STRING:     // TYPE_STRING, TYPE_BYTES
 		case FieldDescriptor::CPPTYPE_MESSAGE:    // TYPE_MESSAGE, TYPE_GROUP
-		ret = Escape(impl, result, v.data(), v.length());
+		ret = EscapeImpl(impl, result, v.data(), v.length());
 		if(ret){
-			GLOG_ERR("escape field:%s error:%d !", fdsc->full_name().c_str(), ret);
+			GLOG_WAR("escape field:%s error:%d !", fdsc->full_name().c_str(), ret);
 		}		
 		return result;
 		break;
@@ -506,20 +535,20 @@ static inline int GetMsgSQLKVList(MySQLMsgMetaImpl * impl, const Message & msg, 
 	return 0;
 }
 //////////////////////////////////////////////////////////////////////////
-static inline int SetMsgSQLKVList(Message & msg, const MySQLRow & sql_row) {
+static inline int SetMsgSQLKVList(Message & msg, const MySQLRow & sql_row_proc) {
 	int ret = 0;
 	std::string error;
 	std::string	value;
 	value.reserve(1024 * 4);
 	std::string	ppath = "";
-	for (int i = 0;i < sql_row.num_fields; ++i) {
-		ppath = sql_row.fields_name[i];
+	for (int i = 0;i < sql_row_proc.num_fields; ++i) {
+		ppath = sql_row_proc.fields_name[i];
 		strreplace(ppath, TABLE_FLAT_FIELD_LAYER_SEP, ".");
 		strreplace(ppath, TABLE_FLAT_FIELD_IDX_SEP, ":");
 		if (ppath.find_last_of(":count") + 6 == (ppath.length())) {
 			continue;//count
 		}
-		value.assign(sql_row.row_data[i], sql_row.row_lengths[i]);
+		value.assign(sql_row_proc.row_data[i], sql_row_proc.row_lengths[i]);
 		ret = protobuf_msg_field_path_set_value(msg, ppath, value, error);
 		if (ret) {
 			GLOG_ERR("msg field  path:%s set error:%d (%s)!", ppath.c_str(), ret, error.c_str());
@@ -640,23 +669,18 @@ int			MySQLMsgMeta::Delete(std::string & sql, const google::protobuf::Message & 
 			GLOG_ERR("error msg sql get kv list!");
 			return ret;
 		}
-		for (auto & kv : kvlist)
-		{
+		for (auto & kv : kvlist){
 			is_pk = 0;
-			for (auto & pk : pmeta->keys_names)
-			{
-				if (kv.first == pk)
-				{
+			for (auto & pk : pmeta->keys_names){
+				if (kv.first == pk){
 					is_pk = true;
 					break;
 				}
 			}
-			if (!is_pk)
-			{
+			if (!is_pk){
 				continue;
 			}
-			if (is_first != 0)
-			{
+			if (is_first != 0){
 				sql += " AND ";
 			}
 			is_first = 1;
@@ -669,8 +693,7 @@ int			MySQLMsgMeta::Delete(std::string & sql, const google::protobuf::Message & 
 	sql += ";";
 	return 0;
 }
-int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode )
-{
+int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode ){
 	auto pmeta = GetMsgExMeta(msg_key.GetTypeName());
 	if (!pmeta) {
 		GLOG_ERR("not found the meta info get type name:%s", msg_key.GetTypeName().c_str());
@@ -685,10 +708,8 @@ int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message &
 		GLOG_ERR("error msg sql get kv list!");
 		return ret;
 	}
-	for (int i = 0; i < (int)kvlist.size(); ++i)
-	{
-		if (i != 0)
-		{
+	for (int i = 0; i < (int)kvlist.size(); ++i){
+		if (i != 0){
 			sql += ",";
 		}
 		sql += "`";
@@ -697,10 +718,8 @@ int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message &
 	}
 	sql += ") VALUES (";
 	//VALUES(vs)
-	for (int i = 0; i < (int)kvlist.size(); ++i)
-	{
-		if (0 != i)
-		{
+	for (int i = 0; i < (int)kvlist.size(); ++i){
+		if (0 != i){
 			sql += ",";
 		}
 		sql += kvlist[i].second;
@@ -708,8 +727,7 @@ int			MySQLMsgMeta::Replace(std::string & sql, const google::protobuf::Message &
 	sql += ");";
 	return 0;
 }
-int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode )
-{
+int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode ){
 	auto pmeta = GetMsgExMeta(msg_key.GetTypeName());
 	if (!pmeta) {
 		GLOG_ERR("not found the meta info get type name:%s", msg_key.GetTypeName().c_str());
@@ -735,23 +753,18 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 
 	int is_first = 0;
 	int is_pk = 0;
-	for (auto & kv : kvlist)
-	{
+	for (auto & kv : kvlist){
 		is_pk = 0;
-		for (int j = 0; j < (int)pmeta->keys_names.size(); ++j)
-		{
-			if (kv.first == pmeta->keys_names[j])
-			{
+		for (int j = 0; j < (int)pmeta->keys_names.size(); ++j){
+			if (kv.first == pmeta->keys_names[j]){
 				is_pk = true;
 				break;
 			}
 		}
-		if (is_pk || kv.first == pmeta->autoinc)
-		{
+		if (is_pk || kv.first == pmeta->autoinc){
 			continue;
 		}
-		if (is_first != 0)
-		{
+		if (is_first != 0){
 			sql += " , ";
 		}
 		is_first = 1;
@@ -760,10 +773,8 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 		sql += " = ";
 		sql += kv.second;
 	}
-	if (!pmeta->autoinc.empty())
-	{
-		if (is_first != 0)
-		{
+	if (!pmeta->autoinc.empty()){
+		if (is_first != 0){
 			sql += " , ";
 		}
 		sql += '`' + pmeta->autoinc + '`';
@@ -774,23 +785,18 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 	//where
 	sql += " WHERE ";
 	is_first = 0;
-	for (auto & kv : kvlist)
-	{
+	for (auto & kv : kvlist){
 		is_pk = 0;
-		for (auto & pk : pmeta->keys_names)
-		{
-			if (kv.first == pk)
-			{
+		for (auto & pk : pmeta->keys_names){
+			if (kv.first == pk){
 				is_pk = true;
 				break;
 			}
 		}
-		if (!is_pk)
-		{
+		if (!is_pk){
 			continue;
 		}
-		if (is_first != 0)
-		{
+		if (is_first != 0){
 			sql += " AND ";
 		}
 		is_first = 1;
@@ -802,15 +808,13 @@ int			MySQLMsgMeta::Update(std::string & sql, const google::protobuf::Message & 
 	sql += ";";
 	return 0;
 }
-int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode )
-{
+int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & msg_key, bool flatmode ){
 	auto pmeta = GetMsgExMeta(msg_key.GetTypeName());
 	if (!pmeta) {
 		GLOG_ERR("not found the meta info get type name:%s", msg_key.GetTypeName().c_str());
 		return -1;
 	}
 	//INSERT INTO order_(...)	values
-	//update order_()	set		where
 	sql = "INSERT INTO `";
 	sql += GetTableName(msg_key);
 	sql += "` (";
@@ -820,18 +824,15 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 		GLOG_ERR("error msg sql get kv list!");
 		return ret;
 	}
-	for (int i = 0; i < (int)kvlist.size(); ++i)
-	{
-		if (i != 0)
-		{
+	for (int i = 0; i < (int)kvlist.size(); ++i){
+		if (i != 0){
 			sql += ",";
 		}
 		sql += "`";
 		sql += kvlist[i].first;
 		sql += "`";
 	}
-	if (!pmeta->autoinc.empty())
-	{
+	if (!pmeta->autoinc.empty()){
 		if (!kvlist.empty()) {
 			sql += ",";
 		}
@@ -841,16 +842,13 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 	}
 	sql += ") VALUES (";
 	//VALUES(vs)
-	for (int i = 0; i < (int)kvlist.size(); ++i)
-	{
-		if (0 != i)
-		{
+	for (int i = 0; i < (int)kvlist.size(); ++i){
+		if (0 != i){
 			sql += ",";
 		}
 		sql += kvlist[i].second;
 	}
-	if (!pmeta->autoinc.empty())
-	{
+	if (!pmeta->autoinc.empty()){
 		sql += ",";
 		sql += "0";
 	}
@@ -859,8 +857,7 @@ int			MySQLMsgMeta::Insert(std::string & sql, const google::protobuf::Message & 
 
 	return 0;
 }
-int        MySQLMsgMeta::Count(std::string & sql, const google::protobuf::Message & msg_key, const char * where_ )
-{
+int        MySQLMsgMeta::Count(std::string & sql, const google::protobuf::Message & msg_key, const char * where_ ){
 	sql = "SELECT COUNT(*) FROM `";
 	sql += GetTableName(msg_key);
 	sql += "` ";
@@ -879,6 +876,9 @@ int			MySQLMsgMeta::DropTable(std::string & sql, const google::protobuf::Message
 	sql += "`;";
 	return 0;
 }
+int			MySQLMsgMeta::Escape(std::string & result, const char * data, int datalen) {
+	return EscapeImpl(impl, result, data, datalen);
+}
 
 int			MySQLMsgMeta::GetMsgFromSQLRow(google::protobuf::Message & msg, const MySQLRow &  sql_row) {
 	if (sql_row.num_fields <= 0) {
@@ -892,4 +892,3 @@ int			MySQLMsgMeta::GetMsgFromSQLRow(google::protobuf::Message & msg, const MySQ
 	}
 	return 0;
 }
-
