@@ -3,9 +3,9 @@
 #include "dcpots/base/logger.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/compiler/importer.h"
-#include "meta/ext_meta.h"
-#include "generater/cpp_gen.h"
-#include "generater/mysql_gen.h"
+#include "dcpots/utility/drs/dcmetaex.h"
+#include "cpp_gen.h"
+#include "mysql_gen.h"
 
 #include "pbdcex.h"
 
@@ -28,13 +28,13 @@ pbdcex_create(const pbdcex_config_t & conf){
 	pbdcex_t * pdc = new pbdcex_t();
 	pdc->conf = conf;
 	char * * files = new char *[conf.meta.files.size()];
-	for (int i = 0; i < conf.meta.files.size(); ++i){
+	for (int i = 0; i < (int)conf.meta.files.size(); ++i){
 		files[i] = (char*)conf.meta.files[i].c_str();
 	}
 	char * * paths = nullptr;
 	if (conf.meta.files.size() > 0){
 		paths = new char *[conf.meta.paths.size()];
-		for (int i = 0; i < conf.meta.paths.size(); ++i){
+		for (int i = 0; i < (int)conf.meta.paths.size(); ++i){
 			paths[i] = (char*)conf.meta.paths[i].c_str();
 		}
 	}
