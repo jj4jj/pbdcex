@@ -7,7 +7,6 @@ extra_c_flags = '-wno-unused-parameter'
 extra_cxx_flags = '--std=c++11 -lpthread -lrt -ldl'
 env = {
 'protoi':'/usr/local/include',
-'dcpotsi':'${project_source_dir}/..',
 'protoc':'protoc',
 'protoi':'/usr/local/include',
 }
@@ -32,23 +31,25 @@ units = [
             'type':'exe',
             'dsrcs': ['proto'],
             'srcs':['proto/test.pb.cc','proto/test.cex.hpp'],
-            'incs':['proto'],
-            'lincs':['lib','{{dcpotsi}}/lib'],
+            'incs':['{{cdir}}/proto','../dcpots/utility/drs','{{root}}/src','{{root}}/../'],
+            'lincs':['{{root}}/lib','{{root}}/../dcpots/lib'],
             'libs' : [
                 'pbdcex',
                 'dcutil-drs',
                 'dcbase',
                 'mysqlclient',
+                'pbjson',
+                'protobuf',
             ],
             'objs': [{
                 'out':'{{cdir}}/proto/test.pb.cc',
                 'dep':'{{cdir}}/proto/test.proto',
-                'cmd':'protoc {{cdir}}/proto/test.proto -I{{cdir}}/proto --cpp_out={{cdir}}/proto/'
+                'cmd':'{{protoc}} {{cdir}}/proto/test.proto -I{{root}}/../dcpots/utility/drs -I{{cdir}}/proto -I{{protoi}} --cpp_out={{cdir}}/proto/'
                 },
                 {
                 'out':'{{cdir}}/proto/test.cex.hpp',
                 'dep':'{{cdir}}/proto/test.proto',
-                'cmd':'{{root}}/bin/pbdcexer -mHello -p{{cdir}}/proto/test.proto -I{{cdir}}/../dcpots/utility/drs -I{{cdir}}/proto -I{{protoi}} --cpp_out={{cdir}}/proto/'
+                'cmd':'{{root}}/bin/pbdcexer -mHello -ptest.proto -I{{root}}/../dcpots/utility/drs -I{{cdir}}/proto -I{{protoi}} --cpp_out={{cdir}}/proto/'
                 },
                 {
                     'name':'sql',

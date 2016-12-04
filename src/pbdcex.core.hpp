@@ -149,10 +149,7 @@ template<class T, class P>
 struct serializable_t {
     int dumps(::std::string & str) const {
         P pm;
-        int ret = reinterpret_cast<const T*>(this)->convto(pm);
-        if (ret){
-            return ret;
-        }
+        reinterpret_cast<const T*>(this)->convto(pm);
         if (!pm.SerializeToString(&str)) {
             return -1;
         }
@@ -163,10 +160,11 @@ struct serializable_t {
         if (!pm.ParseFromString(str)){
             return -1;
         }
-        int ret = reinterpret_cast<T*>(this)->convfrom(pm);
+        int ret = reinterpret_cast<T*>(this)->check_convfrom(pm);
         if (ret){
             return ret;
         }
+        reinterpret_cast<T*>(this)->convfrom(pm);
         return 0;
     }
     int   loads(const char * buff, int ibuff){
@@ -174,10 +172,11 @@ struct serializable_t {
         if (!pm.ParseFromArray(buff, ibuff)){
             return -1;
         }
-        int ret = reinterpret_cast<T*>(this)->convfrom(pm);
+        int ret = reinterpret_cast<T*>(this)->check_convfrom(pm);
         if (ret){
             return ret;
         }
+        reinterpret_cast<T*>(this)->convfrom(pm);
         return 0;
     }
     const char * debugs(::std::string & str) const {

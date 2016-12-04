@@ -8,7 +8,7 @@
 {{!for vd in depencies}}
 #include "{{vd}}"
 {{}}
-#include "pbdcex/pbdcex.core.hpp"
+#include "pbdcex.core.hpp"
 {{ns_begin}}
 using pbdcex::string_t;
 using pbdcex::bytes_t;
@@ -19,7 +19,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
     {{!for vf in vmsg.fields}}{{vf.meta|cs.field.wtype}}       {{vf.meta|cs.field.name}};
     {{}}////////////////////////////////////////////////////////////////////////
     void    construct(){
-        if(sizeof(*this) < 1024){
+        if(sizeof(*this) < 4*1024){
             memset(this, 0, sizeof(*this));
         }
         else {
@@ -36,15 +36,13 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
             {{}}
         }
     }
-    int     convto({{vmsg.meta|msg.name}} & tomsg_) const {
-        int ret = 0;
+    void	convto({{vmsg.meta|msg.name}} & tomsg_) const {
         tomsg_.Clear();
         {{!for vf in vmsg.fields}}
         {{!if vf.meta|field.is_array}}
         for (size_t i = 0;i < {{vf.meta|field.name}}.count; ++i){
             {{!if vf.meta|field.is_msg}}
-            ret = this->{{vf.meta|cs.field.name}}.list[i].convto(*tomsg_.add_{{vf.meta|field.name}}());
-            if (ret){return __LINE__+ret;}
+            this->{{vf.meta|cs.field.name}}.list[i].convto(*tomsg_.add_{{vf.meta|field.name}}());
             {{!elif vf.meta|field.is_bytes }}
             tomsg_.add_{{vf.meta|field.name}}(this->{{vf.meta|cs.field.name}}.list[i].data, this->{{vf.meta|cs.field.name}}.list[i].length);
             {{!elif vf.meta|field.is_string }}
@@ -54,8 +52,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
             {{}}}
         {{!else}}
         {{!if vf.meta|field.is_msg}}
-        ret = this->{{vf.meta|cs.field.name}}.convto(*tomsg_.mutable_{{vf.meta|field.name}}());
-        if (ret) {return __LINE__+ret;}
+        this->{{vf.meta|cs.field.name}}.convto(*tomsg_.mutable_{{vf.meta|field.name}}());
         {{!elif vf.meta|field.is_bytes}}
         tomsg_.set_{{vf.meta|field.name}}(this->{{vf.meta|cs.field.name}}.data, this->{{vf.meta|cs.field.name}}.length);
         {{!elif vf.meta|field.is_string}}
@@ -64,17 +61,14 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         {{}}
         {{}}
         {{}}
-        return ret;
     }
-    int     convfrom(const {{vmsg.meta|msg.name}} & frommsg_) {
-        int ret = 0;
+    void convfrom(const {{vmsg.meta|msg.name}} & frommsg_) {
         {{!for vf in vmsg.fields}}
         {{!if vf.meta|field.is_array}}
         this->{{vf.meta|cs.field.name}}.count=0;
         for (size_t i = 0; i < (size_t)frommsg_.{{ vf.meta | field.name }}_size() && i < {{ vf.meta | field.count }}; ++i, ++(this->{{ vf.meta | cs.field.name }}.count)){
             {{!if vf.meta|field.is_msg}}
-            ret = this->{{vf.meta|cs.field.name}}.list[i].convfrom(frommsg_.{{vf.meta|field.name}}(i));
-            if (ret) { return __LINE__+ret; }
+            this->{{vf.meta|cs.field.name}}.list[i].convfrom(frommsg_.{{vf.meta|field.name}}(i));
             {{!elif vf.meta|field.is_bytes}}
             assert(frommsg_.{{vf.meta|field.name}}(i).length() <= {{vf.meta|field.length}});
             this->{{ vf.meta | cs.field.name }}.list[i].assign(frommsg_.{{ vf.meta | field.name }}(i));
@@ -87,8 +81,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         }
         {{!else}}
         {{!if vf.meta|field.is_msg}}
-        ret = this->{{vf.meta|cs.field.name}}.convfrom(frommsg_.{{vf.meta|field.name}}());
-        if (ret) { return __LINE__+ret; }
+        this->{{vf.meta|cs.field.name}}.convfrom(frommsg_.{{vf.meta|field.name}}());
         {{ !elif vf.meta | field.is_bytes }}
         assert(frommsg_.{{ vf.meta | field.name }}().length() <= {{ vf.meta | field.length }});
         this->{{vf.meta|cs.field.name}}.assign(frommsg_.{{vf.meta|field.name}}());
@@ -100,7 +93,6 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         {{}}
         {{}}
         {{}}
-        return ret;
     }
     int     check_convfrom(const {{vmsg.meta|msg.name}} & frommsg_) const {
         int ret = 0;
@@ -123,7 +115,7 @@ struct {{vmsg.meta|cs.msg.name}} : public serializable_t<{{vmsg.meta|cs.msg.name
         {{!else}}
         {{!if vf.meta|field.is_msg}}
         ret = this->{{vf.meta|cs.field.name}}.check_convfrom(frommsg_.{{vf.meta|field.name}}());
-        if (ret) { return __LINE__; }
+        if (ret) { return ret; }
         {{ !elif vf.meta | field.is_bytes }}
         if (frommsg_.{{ vf.meta | field.name }}().length() > {{ vf.meta | field.length }}){ return __LINE__; }
         {{ !elif vf.meta | field.is_string }}
